@@ -103,6 +103,14 @@
  * @desc Name of SE file to play when cancel is pressed 
  */
 
+var Imported = Imported || {};
+Imported.sp_diamondMenu = 'sp_diamondMenu';
+
+var standardPlayer = standardPlayer || { params: {} };
+standardPlayer.sp_diamondMenu = standardPlayer.sp_diamondMenu || {};
+
+standardPlayer.sp_diamondMenu.parameters = standardPlayer.sp_Core.fullUnpack(PluginManager.parameters('sp_diamondMenu'));
+
 function Scene_DMenu() {
     this.initialize.apply(this, arguments)
 }
@@ -117,16 +125,20 @@ Scene_DMenu.prototype.initialize = function () {
 }
 
 Scene_DMenu.prototype.setProps = function () {
+    let settings = DMenuManager.menu;
     this.index = -1;
-    this.moveInterval = 7;
-    this.distanceMultiplier = .2
-    this.scaleMultiplier = .02
-    this.highlightSE = 'Cursor1';
-    this.selectionSE = 'Cursor2';
+    this.moveInterval = settings.animFrames;
+    this.distanceMultiplier = settings.distanceMod
+    this.scaleMultiplier = settings.scaleMod
+    this.highlightSE = settings.highlightSE
+    this.selectionSE = settings.selectionSE;
+    this.cancelSE = settings.cancelSE;
+    this.diamondImagePath = `img/${settings.diamondGraphic}.png`
     this.BOTTOM = 0;
     this.TOP = 1;
     this.RIGHT = 2;
     this.LEFT = 3;
+    this.settings = settings;
 }
 
 
@@ -141,7 +153,7 @@ Scene_DMenu.prototype.loadDiamondWindows = function () {
 }
 
 Scene_DMenu.prototype.createDiamondSprite = function () {
-    let spr = new PIXI.Sprite.from('img/diamond.png')
+    let spr = new PIXI.Sprite.from(this.diamondImagePath)
 
     spr.anchor.set(.5)
     return spr
@@ -159,7 +171,17 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
     this.initializeDiamondPositions()
     this.cacheInitialPositions()
     this.setMoveInterval()
+    this.setCallbackFunctions()
     return true;
+}
+
+Scene_DMenu.prototype.setCallbackFunctions = function(){
+    let settings = this.settings; 
+
+    this.selectBottom = DMenuManager.parseFunction(settings.bottomSettings.callback)
+    this.selectTop = DMenuManager.parseFunction(settings.topSettings.callback)
+    this.selectRight = DMenuManager.parseFunction(settings.rightSettings.callback)
+    this.selectLeft = DMenuManager.parseFunction(settings.leftSettings.callback)
 }
 
 Scene_DMenu.prototype.diamondWidth = function () {
@@ -257,6 +279,7 @@ Scene_DMenu.prototype.moveDiamond = function (diamond) {
 Scene_DMenu.prototype.returnDiamond = function (diamond) {
     diamond.moveInterval--
     diamond[diamond.moveData[0]] -= diamond.moveData[1]
+    console.log(diamond.moveInterval * this.scaleMultiplier)
     diamond.scale.set(1 + diamond.moveInterval * this.scaleMultiplier)
 }
 
@@ -353,4 +376,76 @@ Scene_DMenu.prototype.update = function () {
     }
     Scene_MenuBase.prototype.update.call(this)
     this.dMenuUpdate()
+}
+
+
+
+
+
+/*
+    DMenuManager
+*/
+
+function DMenuManager(){
+    throw new Error('This is a static class')
+}
+
+DMenuManager.getSettings = function(type, name){
+    let list = type == 'menu' ? 
+    standardPlayer.sp_diamondMenu.parameters.menus:
+    standardPlayer.sp_diamondMenu.parameters.options;
+    let length = list.length;
+    name = name.toLocaleLowerCase()
+
+    for(let i = 0; i < length; i++){
+        if(list[i].name.toLocaleLowerCase() == name)
+            return list[i]
+    }
+
+    console.log('did not find menu')
+    return false;
+}
+
+DMenuManager.loadMenu = function(name){
+    let menu = this.getSettings('menu', name)
+
+    if(menu){
+        menu.bottomSettings = this.getSettings('option', menu.bottom)
+        menu.topSettings = this.getSettings('option', menu.top)
+        menu.rightSettings = this.getSettings('option', menu.right)
+        menu.leftSettings = this.getSettings('option', menu.left)
+
+        this.menu = menu;
+        SceneManager.push(Scene_DMenu)
+    }
+}
+
+
+DMenuManager.parseFunction = function(path){
+    console.log(path)
+    path = path.split('.')
+    let obj = path.length > 1 ? window[path.shift()] : window;
+    let length = path.length;
+
+    for (let i = 0; i < length; i++){
+        obj = obj[path[i]];
+    };
+    return obj;
+};
+
+
+function funcA(){
+    console.log('ran func A')
+}
+
+function funcB(){
+    console.log('ran func b')
+}
+
+function funcC(){
+    console.log('ran func c')
+}
+
+function funcD(){
+    console.log('ran func d')
 }
