@@ -233,10 +233,6 @@ Scene_DMenu.prototype.checkPositions = function () {
         } else if (!this.isInitialPosition(i)) {
             this.returnDiamond(diamond)
         }
-
-
-
-
     }
 }
 
