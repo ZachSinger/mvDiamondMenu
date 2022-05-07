@@ -144,8 +144,8 @@ Scene_DMenu.prototype.setProps = function () {
     this.stage = new PIXI.Container
     this.lines = new PIXI.Container
     this.diamondContainer = new PIXI.Container
-    this.stage.addChild(this.diamondContainer, this.lines)
-    this.addChild(this.stage)
+    // this.stage.addChild(this.diamondContainer, this.lines)
+    // this.addChild(this.stage)
 }
 
 Scene_DMenu.prototype.fontStyle = function(){
@@ -184,11 +184,12 @@ Scene_DMenu.prototype.drawPopoutLines = function(){
 
     for(let i = 0; i < length; i++){
         let line = new PIXI.Graphics
+        line.moveTo(0, 0)
         line.lineStyle(style.brushThickness, style.color, 1)
         line.lineTo(Graphics.width * style.xRise, Graphics.height * style.yRise)
         line.lineTo(line.x + Graphics.width * style.xRun, Graphics.height * style.yRise)
 
-        // line.width += line.width * -1 * 2 * (i % 2)
+        line.visible = false;
         cont.addChild(line)
     }
 }
@@ -221,12 +222,15 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
     }
 
     this.initializeDiamondPositions()
-    // this.drawPopoutLines()
-    // this.initializePopoutPositions()
+    this.drawPopoutLines()
+    this.initializePopoutPositions()
     this.cacheInitialPositions()
     this.setMoveInterval()
     this.setCallbackFunctions()
-    // this.createDiamondText()
+    this.createDiamondText()
+    this.stage.addChild(this.diamondContainer)
+    this.stage.addChild(this.lines)
+    this.addChild(this.stage)
     return true;
 }
 
@@ -268,22 +272,25 @@ Scene_DMenu.prototype.initializeDiamondPositions = function () {
 Scene_DMenu.prototype.initializePopoutPositions = function(){
     let lines = this.lines.children;
     let width = this.diamondWidth()
-    let height = this.diamondHeight()
     let leftDiamond = this.getDiamond(this.left)
     let rightDiamond = this.getDiamond(this.right)
     let upDiamond = this.getDiamond(this.up)
     let downDiamond = this.getDiamond(this.down)
-    let distMod = this.distanceMultiplier * width;
+    let posMod = width / 2;
+    let scaleMod = this.scaleMultiplier * (this.moveInterval / 2) * width;
+    let distMod = (width * this.distanceMultiplier) + scaleMod
+    
+    console.log(distMod)
 
-    lines[this.down].position.set(downDiamond.x, downDiamond.y + distMod);
-    lines[this.down].controlId = "down"
-    lines[this.down].height *= -1
-    lines[this.up].position.set(upDiamond.x, upDiamond.y - distMod)
-    lines[this.up].controlId = "up"
-    lines[this.right].position.set(rightDiamond.x + width + distMod, rightDiamond.y + height / 2)
-    lines[this.right].controlId = "right"
-    lines[this.left].position.set(leftDiamond.x - distMod, leftDiamond.y + height / 2)
-    lines[this.left].controlId = "left"
+    lines[this.down].position.set(downDiamond.x - distMod, downDiamond.y + posMod);
+    lines[this.down].width *= -1
+    downDiamond.popoutLine = lines[this.down]
+    lines[this.up].position.set(upDiamond.x + distMod, upDiamond.y - posMod)
+    upDiamond.popoutLine = lines[this.up]
+    lines[this.right].position.set(rightDiamond.x + width + scaleMod, rightDiamond.y)
+    rightDiamond.popoutLine = lines[this.right]
+    lines[this.left].position.set(leftDiamond.x - posMod - distMod, leftDiamond.y)
+    leftDiamond.popoutLine = lines[this.left]
     lines[this.left].width *= -1
 
     this.lines.position = this.diamondContainer.position;
@@ -302,6 +309,7 @@ Scene_DMenu.prototype.cacheInitialPositions = function () {
 Scene_DMenu.prototype.getDiamond = function (index) {
     return this.diamondContainer.children[index]
 }
+
 
 Scene_DMenu.prototype.getDiamondByDirection = function(direction){
     let list = this.diamondContainer.children;
@@ -338,10 +346,12 @@ Scene_DMenu.prototype.checkPositions = function () {
 
     for (let i = 0; i < length; i++) {
         let diamond = list[i];
-
+        diamond.popoutLine.visible = false;
         if (DMenuControl.isPressed(list[i].controlId)) {
             if (!this.isInSelectedPosition(i)) {
                 this.moveDiamond(diamond)
+            } else {
+                diamond.popoutLine.visible = true;
             }
         } else if (!this.isInitialPosition(i)) {
             this.returnDiamond(diamond)
@@ -568,4 +578,9 @@ let aliasSceneTitle = Scene_Title.prototype.createCommandWindow;
 Scene_Title.prototype.createCommandWindow = function(){
     aliasSceneTitle.call(this)
     this._commandWindow.setHandler("dMenu", ()=>{DMenuManager.loadMenu("MenuA")})
+}
+
+
+function dummyCb(){
+    
 }
