@@ -1,586 +1,740 @@
 /*:
- * 
- * @param options
- * @type struct<OPTION>[]
- * @text Options List
- * @desc A list of settings for individual Options
- * 
- * @param menus
- * @type struct<MENU>[]
- * @text Menus List
- * @desc A list of settings for individual Menus
- */
-
-/*~struct~OPTION:
- * @param name
- * @type text
- * @text Name
- * @desc Used to identify this Option when setting up Menus
- * 
- * @param callback
- * @type text
- * @text Callback
- * @desc Function name or path to call when User hits 'OK' with this option highlighted
- * 
- * @param img
- * @type file
- * @dir img/
- * @text Image
- * @desc Filepath to image to show inside of diamond for this option. Can be left blank.
- * 
- * @param title
- * @type text
- * @text Title
- * @desc Text to display for this option. eg Menu or Equipment
- * 
- */
-
-/*~struct~MENU:
- * @param name
- * @type text
- * @text Name
- * @desc Used to identify this specific menu with a script call
- * 
- * @param bottom
- * @type text
- * @text Bottom
- * @desc Name of Option for bottom diamond
- * 
- * @param top
- * @type text
- * @text Top
- * @desc Name of Option for top diamond
- * 
- * @param right
- * @type text
- * @text Right
- * @desc Name of Option for right diamond
- * 
- * @param left
- * @type text
- * @text Left
- * @desc Name of Option for left diamond
- * 
- * @param diamondGraphic
- * @type file
- * @dir img/
- * @text Diamond Graphic
- * @desc Filepath for Diamond Graphic to use for this menu
- * 
- * @param animFrames
- * @type number
- * @text Animation Frames
- * @desc Number of frames for the diamond selection movement animation to complete
- * 
- * @param distanceMod
- * @type number
- * @decimals 3
- * @text Distance Modifier
- * @desc Distance to move a diamond when selected, relative to its width/height.
- * 
- * @param scaleMod
- * @type number
- * @decimals 3
- * @text Scale Modifier
- * @desc Decimal to scale by each frame. .02 means it should be 1.02 scale on frame 1
- * 
- * @param highlightSE
- * @type file
- * @dir audio/se
- * @text Highlight SE
- * @desc Name of SE file to play when an option is highlighted 
- * 
- * @param selectionSE
- * @type file
- * @dir audio/se
- * @text Selection SE
- * @desc Name of SE file to play when ok is pressed 
- * 
- * @param cancelSE
- * @type file
- * @dir audio/se
- * @text Cancel SE
- * @desc Name of SE file to play when cancel is pressed 
- */
-
-var Imported = Imported || {};
-Imported.sp_diamondMenu = 'sp_diamondMenu';
-
-var standardPlayer = standardPlayer || { params: {} };
-standardPlayer.sp_diamondMenu = standardPlayer.sp_diamondMenu || {};
-
-standardPlayer.sp_diamondMenu.parameters = standardPlayer.sp_Core.fullUnpack(PluginManager.parameters('sp_diamondMenu'));
-
-function Scene_DMenu() {
-    this.initialize.apply(this, arguments)
-}
-
-Scene_DMenu.prototype = Object.create(Scene_MenuBase.prototype)
-Scene_DMenu.prototype.constructor = Scene_DMenu;
-
-Scene_DMenu.prototype.initialize = function () {
-    Scene_MenuBase.prototype.initialize.call(this)
-    this.setProps()
-    this.loadDiamondWindows()
-    
-}
-
-Scene_DMenu.prototype.setProps = function () {
-    let settings = DMenuManager.menu();
-    this.index = -1;
-    this.moveInterval = settings.animFrames;
-    this.distanceMultiplier = settings.distanceMod
-    this.scaleMultiplier = settings.scaleMod
-    this.highlightSE = settings.highlightSE
-    this.selectionSE = settings.selectionSE;
-    this.cancelSE = settings.cancelSE;
-    this.diamondImagePath = `img/${settings.diamondGraphic}.png`
-    this.popoutLineStyle = {brushThickness: 2, xRise: .03, xRun: .2, yRise: -.03, color: 0x000000}
-    this.down = 0;
-    this.up = 1;
-    this.right = 2;
-    this.left = 3;
-    this.settings = settings;
-    this.stage = new PIXI.Container
-    this.lines = new PIXI.Container
-    this.diamondContainer = new PIXI.Container
-    // this.stage.addChild(this.diamondContainer, this.lines)
-    // this.addChild(this.stage)
-}
-
-Scene_DMenu.prototype.fontStyle = function(){
-    return new PIXI.TextStyle({
-        fontSize: 14
-    })
-}
-
-
-Scene_DMenu.prototype.loadDiamondWindows = function () {
-    let cont = this.diamondContainer
-
-    for (let i = 0; i < 4; i++) {
-        cont.addChild(this.createDiamondSprite())
-    }
-    this._diamondsInitialized = false;
-}
-
-Scene_DMenu.prototype.createDiamondSprite = function () {
-    let spr = new PIXI.Sprite.from(this.diamondImagePath)
-
-    spr.anchor.set(.5)
-    return spr
-}
-
-Scene_DMenu.prototype.removePIXIGraphics = function(){
-    this.removeChild(this.stage)
-    this.stage.destroy(true);
-    this.stage = undefined;
-}
-
-Scene_DMenu.prototype.drawPopoutLines = function(){
-    let length = 4;
-    let style = this.popoutLineStyle;
-    let cont = this.lines;
-
-    for(let i = 0; i < length; i++){
-        let line = new PIXI.Graphics
-        line.moveTo(0, 0)
-        line.lineStyle(style.brushThickness, style.color, 1)
-        line.lineTo(Graphics.width * style.xRise, Graphics.height * style.yRise)
-        line.lineTo(line.x + Graphics.width * style.xRun, Graphics.height * style.yRise)
-
-        line.visible = false;
-        cont.addChild(line)
-    }
-}
-
-
-Scene_DMenu.prototype.createDiamondText = function(){
-    let list = [
-        this.diamondContainer.children[this.left],
-        this.diamondContainer.children[this.up],
-        this.diamondContainer.children[this.right],
-        this.diamondContainer.children[this.down]
-    ]
-    let length = 4;
-
-    for(let i = 0; i < length; i++){
-        let txt = new PIXI.Text(`Option ${i}`, this.fontStyle())
-
-        list[i].addChild(txt)
-        txt.pivot.set(txt.width / 2, txt.height / 2)
-    }
-}
-
-Scene_DMenu.prototype.diamondsLoaded = function () {
-    let list = this.diamondContainer.children;;
-    let length = list.length;
-
-    for (let i = 0; i < length; i++) {
-        if (list[i].width <= 1 && list[i].height <= 1)
-            return false;
-    }
-
-    this.initializeDiamondPositions()
-    this.drawPopoutLines()
-    this.initializePopoutPositions()
-    this.cacheInitialPositions()
-    this.setMoveInterval()
-    this.setCallbackFunctions()
-    this.createDiamondText()
-    this.stage.addChild(this.diamondContainer)
-    this.stage.addChild(this.lines)
-    this.addChild(this.stage)
-    return true;
-}
-
-Scene_DMenu.prototype.setCallbackFunctions = function(){
-    let settings = this.settings; 
-
-    this.select_down = DMenuManager.parseFunction(settings.bottomSettings.callback)
-    this.select_up = DMenuManager.parseFunction(settings.topSettings.callback)
-    this.select_right = DMenuManager.parseFunction(settings.rightSettings.callback)
-    this.select_left = DMenuManager.parseFunction(settings.leftSettings.callback)
-}
-
-Scene_DMenu.prototype.diamondWidth = function () {
-    return this.diamondContainer.children[0].width;
-}
-
-Scene_DMenu.prototype.diamondHeight = function () {
-    return this.diamondContainer.children[0].height;
-}
-
-Scene_DMenu.prototype.initializeDiamondPositions = function () {
-    let diamonds = this.diamondContainer.children;
-    let width = this.diamondWidth()
-    let height = this.diamondHeight();
-
-    diamonds[this.down].position.set(0, (height * .5));
-    diamonds[this.down].controlId = "down"
-    diamonds[this.up].position.set(0, (height * .5) * -1)
-    diamonds[this.up].controlId = "up"
-    diamonds[this.right].position.set(width * .5, 0)
-    diamonds[this.right].controlId = "right"
-    diamonds[this.left].position.set((width * .5) * -1, 0)
-    diamonds[this.left].controlId = "left"
-
-
-    this.diamondContainer.position.set(Graphics.width * .5, Graphics.height * .8)
-}
-
-Scene_DMenu.prototype.initializePopoutPositions = function(){
-    let lines = this.lines.children;
-    let width = this.diamondWidth()
-    let leftDiamond = this.getDiamond(this.left)
-    let rightDiamond = this.getDiamond(this.right)
-    let upDiamond = this.getDiamond(this.up)
-    let downDiamond = this.getDiamond(this.down)
-    let posMod = width / 2;
-    let scaleMod = this.scaleMultiplier * (this.moveInterval / 2) * width;
-    let distMod = (width * this.distanceMultiplier) + scaleMod
-    
-    console.log(distMod)
-
-    lines[this.down].position.set(downDiamond.x - distMod, downDiamond.y + posMod);
-    lines[this.down].width *= -1
-    downDiamond.popoutLine = lines[this.down]
-    lines[this.up].position.set(upDiamond.x + distMod, upDiamond.y - posMod)
-    upDiamond.popoutLine = lines[this.up]
-    lines[this.right].position.set(rightDiamond.x + width + scaleMod, rightDiamond.y)
-    rightDiamond.popoutLine = lines[this.right]
-    lines[this.left].position.set(leftDiamond.x - posMod - distMod, leftDiamond.y)
-    leftDiamond.popoutLine = lines[this.left]
-    lines[this.left].width *= -1
-
-    this.lines.position = this.diamondContainer.position;
-}
-
-Scene_DMenu.prototype.cacheInitialPositions = function () {
-    let list = this.diamondContainer.children;
-    let length = list.length;
-
-    for (let i = 0; i < length; i++) {
-        list[i].cachedDiamondPosition = [list[i].x, list[i].y]
-        list[i].moveInterval = 0;
-    }
-}
-
-Scene_DMenu.prototype.getDiamond = function (index) {
-    return this.diamondContainer.children[index]
-}
-
-
-Scene_DMenu.prototype.getDiamondByDirection = function(direction){
-    let list = this.diamondContainer.children;
-    let length = list.length;
-
-    for(let i = 0; i < length; i++){
-        if(list[i].controlId == direction)
-            return list[i]
-    }
-}
-
-Scene_DMenu.prototype.setMoveInterval = function () {
-    let diamonds = this.diamondContainer.children;
-    let width = this.diamondWidth()
-    let height = this.diamondHeight();
-    let xMod = width / this.moveInterval * this.distanceMultiplier
-    let yMod = height / this.moveInterval * this.distanceMultiplier
-
-    diamonds[this.down].moveData = ['y', yMod]
-    diamonds[this.up].moveData = ['y', yMod * -1]
-    diamonds[this.right].moveData = ['x', xMod]
-    diamonds[this.left].moveData = ['x', xMod * -1]
-}
-
-Scene_DMenu.prototype.dMenuUpdate = function () {
-    this.checkPositions()
-    this.checkInput()
-    this.checkSEPlay()
-}
-
-Scene_DMenu.prototype.checkPositions = function () {
-    let list = this.diamondContainer.children;
-    let length = list.length;
-
-    for (let i = 0; i < length; i++) {
-        let diamond = list[i];
-        diamond.popoutLine.visible = false;
-        if (DMenuControl.isPressed(list[i].controlId)) {
-            if (!this.isInSelectedPosition(i)) {
-                this.moveDiamond(diamond)
-            } else {
-                diamond.popoutLine.visible = true;
-            }
-        } else if (!this.isInitialPosition(i)) {
-            this.returnDiamond(diamond)
-        }
-    }
-}
-
-
-Scene_DMenu.prototype.isInSelectedPosition = function (index) {
-    let diamond = this.getDiamond(index);
-
-    return diamond.moveInterval == this.moveInterval;
-}
-
-Scene_DMenu.prototype.isInitialPosition = function (index) {
-    let diamond = this.getDiamond(index)
-    return !diamond.moveInterval;
-}
-
-Scene_DMenu.prototype.moveDiamond = function (diamond) {
-    diamond.moveInterval++
-    diamond[diamond.moveData[0]] += diamond.moveData[1]
-    diamond.scale.set(1 + diamond.moveInterval * this.scaleMultiplier)
-}
-
-Scene_DMenu.prototype.returnDiamond = function (diamond) {
-    diamond.moveInterval--
-    diamond[diamond.moveData[0]] -= diamond.moveData[1]
-    diamond.scale.set(1 + diamond.moveInterval * this.scaleMultiplier)
-}
-
-
-Scene_DMenu.prototype.checkInput = function () {
-    if(Input.isTriggered('cancel')){
-        this.removePIXIGraphics()
-        DMenuManager.popScene()
-    }
-
-    DMenuControl.pollControls()
-
-    if(!DMenuControl.isPressed() && DMenuControl.selectedOptions.length){
-        let key = DMenuControl.selectedOptions[0]
-        this[`select_${key}`]()
-    }
-    DMenuControl.setActiveSelections()
-}
-
-Scene_DMenu.prototype.checkSEPlay = function () {
-    if (this.playSE && this[`${this.playSE}SE`]) {
-        this.playSound(this[`${this.playSE}SE`])
-    }
-    this.playSE = false;
-}
-
-Scene_DMenu.prototype.playSound = function (name) {
-    let options = {
-        name: name,
-        pitch: 50,
-        volume: 100,
-        pan: 0
-    }
-    AudioManager.playSe(options)
-}
-
-
-Scene_DMenu.prototype.select_down = function(){
-    console.log('selected bottom')
-}
-
-Scene_DMenu.prototype.select_top = function(){
-    console.log('selected top')    
-}
-
-Scene_DMenu.prototype.select_left = function(){
-    console.log('selected left')    
-}
-
-Scene_DMenu.prototype.select_right = function(){
-    console.log('selected right')    
-}
-
-Scene_DMenu.prototype.update = function () {
-    if (!this._diamondsInitialized) {
-        return this._diamondsInitialized = this.diamondsLoaded()
-    }
-    Scene_MenuBase.prototype.update.call(this)
-    this.dMenuUpdate()
-}
-
-
-
-
-
-/*
-    DMenuManager
+* @plugindesc standardPlayer MZ core script
+* @author standardplayer
+* @target MZ
 */
 
-function DMenuManager(){
-    throw new Error('This is a static class')
+var Imported = Imported || {};
+Imported.sp_Core = 'sp_Core';
+
+var standardPlayer = standardPlayer || { params: {} };
+standardPlayer.sp_Core = standardPlayer.sp_Core || {};
+
+standardPlayer.sp_Core.Parameters = PluginManager.parameters('standardPlayer.sp_Core');
+
+
+// /* ===================================================================================================
+//         Update Handlers
+//  ===================================================================================================*/
+standardPlayer.sp_Core.updateContainer = {
+    _sceneBaseUpdatesPre: [],
+    _sceneMenuUpdatesPre: [],
+    _sceneMapUpdatesPre: [],
+    _sceneBaseUpdatesPost: [],
+    _sceneMenuUpdatesPost: [],
+    _sceneMapUpdatesPost: [],
 }
 
-DMenuManager.sceneSettings = [];
-DMenuControl.selectedOptions = [];
+standardPlayer.sp_Core._aliasSceneBase = Scene_Base.prototype.update;
+standardPlayer.sp_Core._aliasSceneMenu = Scene_MenuBase.prototype.update;
+standardPlayer.sp_Core._aliasSceneMap = Scene_Map.prototype.update;
 
-DMenuManager.getSettings = function(type, name){
-    let list = type == 'menu' ? 
-    standardPlayer.sp_diamondMenu.parameters.menus:
-    standardPlayer.sp_diamondMenu.parameters.options;
-    let length = list.length;
-    name = name.toLocaleLowerCase()
+standardPlayer.sp_Core.addBaseUpdate = function (method, post, index) {
+    let updates = post ?
+        this.updateContainer._sceneBaseUpdatesPost :
+        this.updateContainer._sceneBaseUpdatesPre;
 
-    for(let i = 0; i < length; i++){
-        if(list[i].name.toLocaleLowerCase() == name)
-            return list[i]
+    this.addUpdate(updates, method, index)
+}
+
+standardPlayer.sp_Core.addMapUpdate = function (method, post, index) {
+    let updates = post ?
+        this.updateContainer._sceneMapUpdatesPost :
+        this.updateContainer._sceneMapUpdatesPre;
+
+    this.addUpdate(updates, method, index)
+}
+
+standardPlayer.sp_Core.addMenuUpdate = function (method, post, index) {
+    let updates = post ?
+        this.updateContainer._sceneMenuUpdatesPre :
+        this.updateContainer._sceneMenuUpdatesPost;
+
+    this.addUpdate(updates, method, index)
+}
+
+standardPlayer.sp_Core.addUpdate = function (location, method, index) { // [location, method, index]
+    let args = [location, method, index]
+    index = typeof args[2] !== 'undefined' ?
+        args[1] <= args[0].length ?
+            args[1] :
+            args[0].length :
+        args[0].length;
+
+    args[0].splice(args[2], 0, args[1]);
+}
+
+standardPlayer.sp_Core.removeBaseUpdate = function (method, post) {
+    let updates = post ?
+        '_sceneBaseUpdatesPost' :
+        '_sceneBaseUpdatesPre';
+
+    this.removeUpdate(updates, method)
+}
+
+standardPlayer.sp_Core.removeMapUpdate = function (method, post) {
+    let updates = post ?
+        '_sceneMapUpdatesPost' :
+        '_sceneMapUpdatesPre';
+
+    this.removeUpdate(updates, method)
+}
+
+standardPlayer.sp_Core.removeMenuUpdate = function (method, post) {
+    let updates = post ?
+        '_sceneMenuUpdatesPost' :
+        '_sceneMenuUpdatesPre';
+
+    this.removeUpdate(updates, method)
+}
+
+standardPlayer.sp_Core.removeUpdate = function (locationName, method) {
+    let location = this.updateContainer[locationName];
+
+    this.updateContainer[locationName] = location.filter(item => item != method);
+
+}
+
+Scene_Base.prototype.update = function () {
+    standardPlayer.sp_Core.updateContainer._sceneBaseUpdatesPre.forEach(
+        item => item()
+    )
+
+    standardPlayer.sp_Core._aliasSceneBase.call(this);
+
+    standardPlayer.sp_Core.updateContainer._sceneBaseUpdatesPost.forEach(
+        item => item()
+    )
+}
+
+
+Scene_Map.prototype.update = function () {
+    let thisObject = this;
+
+    standardPlayer.sp_Core.updateContainer._sceneMapUpdatesPre.forEach(
+        item => item()
+    )
+
+    standardPlayer.sp_Core._aliasSceneMap.call(this);
+
+    standardPlayer.sp_Core.updateContainer._sceneMapUpdatesPost.forEach(
+        item => item()
+    )
+}
+
+Scene_MenuBase.prototype.update = function () {
+    let thisObject = this;
+
+    standardPlayer.sp_Core.updateContainer._sceneMenuUpdatesPre.forEach(
+        item => item()
+    )
+
+    standardPlayer.sp_Core._aliasSceneMenu.call(this);
+
+    standardPlayer.sp_Core.updateContainer._sceneMenuUpdatesPost.forEach(
+        item => item()
+    )
+}
+
+
+/* ===================================================================================================
+        DataManager
+ ===================================================================================================*/
+
+standardPlayer.sp_Core._aliasDataManagerLoad = DataManager.loadDatabase;
+standardPlayer.sp_Core._aliasDatamanagerMakeSaveContents = DataManager.makeSaveContents;
+standardPlayer.sp_Core._databaseLoadFiles = [];
+standardPlayer.sp_Core._databaseSaveFiles = [];
+
+
+
+DataManager.loadDatabase = function () {
+    let databaseFiles = this._databaseFiles;
+    let addedFiles = standardPlayer.sp_Core._databaseLoadFiles;
+
+    this._databaseFiles = addedFiles.length ? databaseFiles.concat(addedFiles) : databaseFiles;
+    standardPlayer.sp_Core._aliasDataManagerLoad.call(this)
+}
+
+DataManager.makeSaveContents = function () {
+    let contents = standardPlayer.sp_Core._aliasDatamanagerMakeSaveContents();
+    return Object.assign({}, contents, standardPlayer.sp_Core._databaseSaveFiles)
+}
+
+standardPlayer.sp_Core.addDatabaseFile = function (objName, src, save) {
+    let obj = { name: objName, src: src };
+    this._databaseLoadFiles.push(obj)
+
+    if (save)
+        this._databaseSaveFiles.push(obj)
+}
+
+
+/* ===================================================================================================
+        Movement Handlers
+ ===================================================================================================*/
+
+standardPlayer.sp_Core.allowPlayerMovement = true;
+standardPlayer.sp_Core.allowEventMovement = true;
+standardPlayer.sp_Core.aliasPlayerCanMove = Game_Player.prototype.canMove;
+standardPlayer.sp_Core.aliasEventSelfMovement = Game_Event.prototype.updateSelfMovement;
+
+Game_Player.prototype.canMove = function () {
+    if (standardPlayer.sp_Core.allowPlayerMovement)
+        return standardPlayer.sp_Core.aliasPlayerCanMove.call(this);
+}
+
+Game_Event.prototype.canMove = function () {
+    return standardPlayer.sp_Core.allowEventMovement;
+}
+
+Game_Event.prototype.updateSelfMovement = function () {
+    if (this.canMove())
+        standardPlayer.sp_Core.aliasEventSelfMovement.call(this);
+}
+
+standardPlayer.sp_Core.togglePlayerMovement = function (canMove) {
+    this.allowPlayerMovement = typeof canMove != 'undefined' ?
+        canMove :
+        !this.allowPlayerMovement;
+}
+
+standardPlayer.sp_Core.toggleEventMovement = function (canMove) {
+    this.allowEventMovement = typeof canMove != 'undefined' ?
+        canMove :
+        !this.allowEventMovement;
+}
+
+
+/* ===================================================================================================
+        Input Handlers
+ ===================================================================================================*/
+
+standardPlayer.sp_Core.inputCache = JSON.parse(JSON.stringify(Input.keyMapper));
+
+standardPlayer.sp_Core.toggleAction = function (action, enable) {
+    let keys = Object.keys(Input.keyMapper);
+    let vals = Object.values(Input.keyMapper);
+    let disabled = 'temp' + action;
+    let process = typeof enable == 'undefined' ? 2 : enable ? 0 : 1;
+
+    for (i in keys) {
+        if (process == 0) {
+            //enabled
+            if (vals[i] == disabled)
+                Input.keyMapper[keys[i]] = action;
+        } else if (process == 1) {
+            //disabled
+            if (vals[i] == action)
+                Input.keyMapper[keys[i]] = disabled;
+        } else {
+            //toggled
+            if (vals[i] == disabled)
+                Input.keyMapper[keys[i]] = action;
+            else if (vals[i] == action)
+                Input.keyMapper[keys[i]] = disabled;
+        }
+
+
+    }
+}
+
+standardPlayer.sp_Core.toggleInput = function (enable) {
+    let vals = ["ok", "cancel", "shift", "control", "pageup", "pagedown", "up", "down", "right", "left", "tab", "escape"];
+
+    this.toggleKeys(vals, enable);
+}
+
+standardPlayer.sp_Core.toggleMovementKeys = function (enable) {
+    let vals = ["up", "down", "left", "right"];
+
+    this.toggleKeys(vals, enable);
+}
+
+standardPlayer.sp_Core.toggleSelectKey = function (enable) {
+    this.toggleKeys(["ok"], enable)
+}
+
+standardPlayer.sp_Core.toggleKeys = function (vals, enable) {
+    vals.forEach(item => this.toggleAction(item, enable));
+}
+
+standardPlayer.sp_Core.reassignKey = function (keyToReplace, replacement) {
+    let keys = Object.keys(Input.keyMapper)
+    let length = keys.length;
+
+    for (let i = 0; i < length; i++) {
+        if (Input.keyMapper[keys[i]] == keyToReplace)
+            Input.keyMapper[keys[i]] = replacement
+    }
+}
+
+
+/* ===================================================================================================
+       Character Sprite tools
+===================================================================================================*/
+
+standardPlayer.sp_Core.getCharactersSpriteset = function () {
+    return SceneManager._scene._spriteset.children[0].children[2].children;
+}
+
+standardPlayer.sp_Core.getCharacterFromSpriteset = function (character) {
+    let spriteset = this.getCharactersSpriteset();
+
+    for (sprite of spriteset) {
+        if (sprite._character == character) {
+            return sprite
+        }
+
+    }
+}
+
+standardPlayer.sp_Core.setSpriteReferences = function () {
+    let evs = $gameMap.events().concat($gamePlayer._followers._data);
+
+    evs.forEach(ev => standardPlayer.sp_Core.getCharacterFromSpriteset(ev))
+}
+
+Game_CharacterBase.prototype.sprite = function () {
+    return standardPlayer.sp_Core.getCharacterFromSpriteset(this)
+}
+
+Game_CharacterBase.prototype.setRow = function (row) {
+    let sprite = this.sprite();
+    let singleHeight = sprite.height;
+    let singleWidth = sprite.width;
+
+    if (!this.gridData)
+        this.gridData = { row: 0, col: 0, rowMax: 3, colMax: 2 }
+    console.log(Math.min(row, this.gridData.rowMax))
+    row = Math.max(Math.min(row, this.gridData.rowMax), 0);
+    this.gridData.row = row;
+
+    sprite.texture.frame = new Rectangle(sprite.texture.frame.x, singleHeight * row, singleWidth, singleHeight)
+}
+
+Game_CharacterBase.prototype.setCol = function (col) {
+    let sprite = this.sprite();
+    let singleHeight = sprite.height;
+    let singleWidth = sprite.width;
+
+    if (!this.gridData)
+        this.gridData = { row: 0, col: 0, rowMax: 3, colMax: 2 }
+    console.log(Math.min(col, this.gridData.colMax))
+    col = Math.max(Math.min(col, this.gridData.colMax), 0);
+    this.gridData.col = col;
+
+    sprite.texture.frame = new Rectangle(singleWidth * col, sprite.texture.frame.y, singleWidth, singleHeight)
+}
+
+Game_CharacterBase.prototype.setRowCol = function (row, col) {
+    this.setRow(row);
+    this.setCol(col);
+}
+
+Game_CharacterBase.prototype.setGridData = function (rows, cols) {
+    let sprite = this.sprite();
+
+    if (!this.gridData)
+        this.gridData = { row: 0, col: 0, rowMax: rows - 1, colMax: cols - 1 }
+
+    sprite.texture.frame = new Rectangle(0, 0, sprite.texture.baseTexture.width / cols, sprite.texture.baseTexture.height / rows)
+    return this;
+}
+
+
+
+/* ===================================================================================================
+       Common Utility Functions
+===================================================================================================*/
+
+standardPlayer.sp_Core.plotLinearPath = function (orig, dest, frames, pad) {
+    let dist = dest - orig;
+    let inc = dist / frames;
+    let result = [];
+
+    pad = pad ? pad : 0;
+    for (let i = 0; i < pad; i++) {
+        result[i] = orig;
     }
 
-    console.log('did not find menu')
+
+    let length = result.length - 1;
+    for (let i = 1; i <= frames; i++) {
+        result[length + i] = orig + inc * i
+    }
+
+    return result
+}
+
+standardPlayer.sp_Core.retrieveFromList = function (list, condition) {
+    let length = list.length;
+
+    for (let i = 0; i < length; i++) {
+        if (condition(list[i])) {
+            return [i, list[i]]
+        }
+    }
+
     return false;
 }
 
-DMenuManager.loadMenu = function(name){
-    let menu = this.getSettings('menu', name)
+standardPlayer.sp_Core.collision = function (spriteA, spriteB) {
+    if (!spriteB)
+        spriteB = { x: TouchInput.x, y: TouchInput.y, width: 1, height: 1 }
+    return !(
+        ((spriteA.y + spriteA.height) < (spriteB.y)) ||
+        (spriteA.y > (spriteB.y + spriteB.height)) ||
+        ((spriteA.x + spriteA.width) < spriteB.x) ||
+        (spriteA.x > (spriteB.x + spriteB.width))
+    );
+}
 
-    if(menu){
-        menu.bottomSettings = this.getSettings('option', menu.bottom)
-        menu.topSettings = this.getSettings('option', menu.top)
-        menu.rightSettings = this.getSettings('option', menu.right)
-        menu.leftSettings = this.getSettings('option', menu.left)
+standardPlayer.sp_Core.rndBetween = function (min, max, includingMax) {
+    max = includingMax ? max + 1 : max;
+    return Math.floor(Math.random() * (max - min)) + min;
+}
 
-        this.sceneSettings.push(menu)
-        SceneManager.push(Scene_DMenu)
+standardPlayer.sp_Core.angle = function (cx, cy, ex, ey) {
+    let dy = 0;
+    let dx = 0;
+
+    if (arguments.length < 3) {
+        dy = cy.y - cx.y;
+        dx = cy.x - cx.x;
+    } else {
+        dy = ey - cy;
+        dx = ex - cx;
+    }
+    let theta = Math.atan2(dy, dx); //to radians
+
+    theta *= 180 / Math.PI; //to degrees
+    //if (theta < 0) theta = 360 + theta; // range [0, 360)
+    return theta;
+}
+
+standardPlayer.sp_Core.angleToward = function(obj, targ, adj){
+    obj.angle = this.angle(obj.x, obj.y, targ.x, targ.y)
+    obj.rotation -= - (adj ? Math.PI * .5 : 0)
+}
+
+standardPlayer.sp_Core.calculateTurnAngle = function(obj, targ, adj){
+    let angle = this.angle(obj.x, obj.y, targ.x, targ.y);
+    let adjRadians = (Math.PI * .5) * 2
+    let adjDegrees = adjRadians * 180 / Math.PI
+    if(adj){
+        angle -=  adjDegrees
+    }
+
+    return angle;
+}
+
+standardPlayer.sp_Core.turnToward = function(obj, targ, adj, spd){
+    let angle = this.calculateTurnAngle(obj, targ, adj)
+    spd = spd || 1;
+
+    if(angle > obj.angle){
+        obj.angle = Math.min(obj.angle + spd, angle)
+    } else {
+        obj.angle = Math.max(obj.angle - spd, angle)
     }
 }
 
-DMenuManager.menu = function(){
-    return this.sceneSettings[this.sceneSettings.length - 1]
+
+standardPlayer.sp_Core.moveByAngle = function (obj, spd, adj) {
+    let angle = obj.rotation - (adj ? Math.PI * .5 : 0)
+    let dx = Math.cos(angle) * spd;
+    let dy = Math.sin(angle) * spd;
+
+    obj.x += dx;
+    obj.y += dy;
 }
 
+//Convert Graphics Object to Sprite
+standardPlayer.sp_Core.GraphToSprite = function (g) {
+    let t = new PIXI.Texture(this.GraphToTexture(g))
 
-DMenuManager.parseFunction = function(path){
-    path = path.split('.')
-    let obj = path.length > 1 ? window[path.shift()] : window;
-    let length = path.length;
+    return new PIXI.Sprite(t)
+}
 
-    for (let i = 0; i < length; i++){
-        obj = obj[path[i]];
-    };
-    return obj;
+//convert Bitmap to Sprite * uses function base64ArrayBuffer, credit and license listed below
+standardPlayer.sp_Core.BmpToSprite = function (b) {
+    let t = new PIXI.Texture.from(b.__canvas)
+
+    return new PIXI.Sprite(t)
+}
+
+//Convert Graphics Object to Texture
+standardPlayer.sp_Core.GraphToTexture = function (g) {
+    let r = Graphics.app.renderer;
+
+    return r.generateTexture(g)
+}
+
+standardPlayer.sp_Core.fullUnpack = function (obj, stack) {
+    let keys = Object.keys(obj)
+    let vals = Object.values(obj)
+    let len = keys.length;
+    let i = 0;
+    let res = false;
+    stack = stack || 0
+
+    for (i = 0; i < len; i++) {
+        if (!isNaN(obj[keys[i]])) {
+            obj[keys[i]] = Number(obj[keys[i]])
+        }
+
+        if (standardPlayer.sp_Core.isObject(vals[i])) {
+            obj[keys[i]] = standardPlayer.sp_Core.fullUnpack(vals[i])
+            continue
+        }
+
+        //If the value is NOT an object, this point in the code is reached
+        //If the value is a JSON escaped array or object, parse it
+        if (standardPlayer.sp_Core.isJSON(vals[i])) {
+            res = true
+            obj[keys[i]] = JsonEx.parse(vals[i])
+
+
+            //If the current value being examined is an array, iterate through
+            //to check for further parsing
+            if (Array.isArray(obj[keys[i]])) {
+                obj[keys[i]].forEach((item) => {
+                    if (standardPlayer.sp_Core.isJSON(item)) {
+                        item = JsonEx.parse(item)
+                        if (standardPlayer.sp_Core.isObject(item)) {
+                            standardPlayer.sp_Core.fullUnpack(item)
+                        }
+                    } //end isJSON condition
+
+                    if (!isNaN(item))
+                        item = Number(item)
+                })
+            } //end isArray condition
+
+            //If the current value is a number in string form, convert it
+
+
+        }
+
+
+    }
+    if (res)
+        this.fullUnpack(obj)
+    return obj
+}
+
+standardPlayer.sp_Core.isJSON = function (str) {
+    if (!Number.isNaN(Number(str)))
+        return false
+
+    try {
+        JSON.parse(str)
+    }
+    catch (e) {
+        return false
+    }
+    return true
+}
+
+standardPlayer.sp_Core.isFunction = function (functionToCheck) {
+    return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]';
+}
+
+standardPlayer.sp_Core.isObject = function (x) {
+    return (x === Object(x));
 };
 
-DMenuManager.popScene = function(){
-    this.sceneSettings.pop()
-    SceneManager.pop()
+/*
+    The below methods, unWrapStringOrNumber and areEquivalent are taken, unaltered, from
+    https://stackoverflow.com/questions/1068834/object-comparison-in-javascript
+    submitted by user 
+    https://stackoverflow.com/users/42921/eamon-nerbonne
+*/
+standardPlayer.sp_Core.unwrapStringOrNumber = function (obj) {
+    return (obj instanceof Number || obj instanceof String
+        ? obj.valueOf()
+        : obj);
+}
+standardPlayer.sp_Core.areEquivalent = function (a, b) {
+    a = this.unwrapStringOrNumber(a);
+    b = this.unwrapStringOrNumber(b);
+    if (a === b) return true; //e.g. a and b both null
+    if (a === null || b === null || typeof (a) !== typeof (b)) return false;
+    if (a instanceof Date)
+        return b instanceof Date && a.valueOf() === b.valueOf();
+    if (typeof (a) !== "object")
+        return a == b; //for boolean, number, string, xml
+
+    var newA = (a.areEquivalent_Eq_91_2_34 === undefined),
+        newB = (b.areEquivalent_Eq_91_2_34 === undefined);
+    try {
+        if (newA) a.areEquivalent_Eq_91_2_34 = [];
+        else if (a.areEquivalent_Eq_91_2_34.some(
+            function (other) { return other === b; })) return true;
+        if (newB) b.areEquivalent_Eq_91_2_34 = [];
+        else if (b.areEquivalent_Eq_91_2_34.some(
+            function (other) { return other === a; })) return true;
+        a.areEquivalent_Eq_91_2_34.push(b);
+        b.areEquivalent_Eq_91_2_34.push(a);
+
+        var tmp = {};
+        for (var prop in a)
+            if (prop != "areEquivalent_Eq_91_2_34")
+                tmp[prop] = null;
+        for (var prop in b)
+            if (prop != "areEquivalent_Eq_91_2_34")
+                tmp[prop] = null;
+
+        for (var prop in tmp)
+            if (!this.areEquivalent(a[prop], b[prop]))
+                return false;
+        return true;
+    } finally {
+        if (newA) delete a.areEquivalent_Eq_91_2_34;
+        if (newB) delete b.areEquivalent_Eq_91_2_34;
+    }
+}
+
+standardPlayer.sp_Core.findFilesInDir = function (includeDir, currentPath) {
+    let fs = require('fs');
+    let currentFile;
+    let stats;
+    let files;
+    let result = [];
+    let i = 0;
+
+    files = fs.readdirSync(currentPath);
+    for (i in files) {
+        currentFile = currentPath + '/' + files[i];
+        stats = fs.statSync(currentFile);
+        if (stats.isFile()) {
+            result.push(currentFile);
+        }
+        else if (stats.isDirectory() && includeDir) {
+            result = result.concat(TestFileManager.findFilesInDir(true, currentFile));
+        }
+
+
+    }
+    return result
+}
+
+standardPlayer.sp_Core.readTextFile = function (path) {
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", path, false);
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200 || xhr.status == 0) {
+                var allText = xhr.responseText;
+                window.allText = allText
+            }
+        }
+    }
+    xhr.send(null);
+}
+
+standardPlayer.sp_Core.loadFile = function (filePath, success, onError) {
+
+    let xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4) {
+            if (xhr.status == 200 || xhr.status == 0) {
+                try {
+                    eval(xhr.responseText);
+                } catch (e) {
+                    onError(e, filePath);
+                    return;
+                }
+                success();
+            } else {
+                onError(xhr.status, filePath);
+            }
+        }
+    }.bind(this);
+
+    try {
+        xhr.open("GET", filePath, true);
+        xhr.send();
+    } catch (e) {
+        onError(e, filePath);
+    }
+}
+
+standardPlayer.sp_Core.writeTextFile = function(relativeFilePath, content){
+    let fs = require("fs");
+    fs.readFile(`${relativeFilePath}.txt`, (content) => {
+        let textByLine = text.split("\n");
+});
+}
+
+standardPlayer.sp_Core.getAllFunctionNames = function (obj) {
+    let props = new Set()
+    let currentObj = obj
+
+    do {
+        Object.getOwnPropertyNames(currentObj).map(item => props.add(item))
+    } while ((currentObj = Object.getPrototypeOf(currentObj)))
+    return [...props.keys()].filter(item => typeof obj[item] === 'function')
+
+}
+
+standardPlayer.sp_Core.combineFunctionsAlpha = function (left, right) {
+    let f = (...args) => {
+        left.apply(null, args)
+        right.apply(null, args)
+    }
+
+    return f
 }
 
 
-function funcA(){
-    DMenuManager.loadMenu('MenuB')
+standardPlayer.sp_Core.combineFunctionsBeta = function (scope, left, right) {
+    let f = (...args) => {
+        left.apply(scope, args)
+        right.apply(scope, args)
+    }
+
+    return f
 }
 
-function funcB(){
-    console.log('ran func b')
-}
+standardPlayer.sp_Core.combineObjectsAlpha = function (left, right, scope) {
+    let functionNames = this.getAllFunctionNames(right)
+    let length = functionNames.length;
 
-function funcC(){
-    console.log('ran func c')
-}
-
-function funcD(){
-    console.log('ran func d')
-}
-
-
-
-function DMenuControl(){
-    throw new Error('This is a static class')
-}
-
-DMenuControl.controls = {left:false, right:false, up:false, down:false}
-
-DMenuControl.isPressed = function(direction){
-    direction = direction ? [this.controls[direction]] : Object.values(this.controls)
-    return direction.indexOf(true) != -1
-}
-
-DMenuControl.pollControls = function(){
-    this.pollDirections()
-}
-
-DMenuControl.pollDirections = function(){
-    let list = Object.keys(this.controls)
-    let length = 4;
-
-    for(let i = 0; i < length; i++){
-        if(Input.isPressed(list[i])){
-            this.controls[list[i]] = true;
+    for (let i = 0; i < length; i++) {
+        if (typeof left[functionNames[i]] == undefined) {
+            left[functionNames[i]] = right[functionNames[i]].bind(left)
         } else {
-            this.controls[list[i]] = false;
+            left[functionNames[i]] = scope ?
+                this.combineFunctionsBeta(scope, left[functionNames[i]], right[functionNames[i]]) :
+                this.combineFunctionsAlpha(left[functionNames[i]], right[functionNames[i]])
         }
     }
 }
 
-DMenuControl.setActiveSelections = function(){
-    let list = this.controls
-    let keys = Object.keys(list)
-    let length = 4;
-    let pressed = []
+
+standardPlayer.sp_Core.hasReturnValue = function(func){
+    return  typeof func() !== 'undefined'
+}
+
+standardPlayer.sp_Core.generateUUID = function(){
+    var dt = new Date().getTime();
+    var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = (dt + Math.random()*16)%16 | 0;
+        dt = Math.floor(dt/16);
+        return (c=='x' ? r :(r&0x3|0x8)).toString(16);
+        });
+    return uuid
+}
+
+standardPlayer.sp_Core.getEventByName = function(name){
+    let list = $dataEvents;
+    let length = list.length;
 
     for(let i = 0; i < length; i++){
-        if(list[keys[i]])
-            pressed.push(keys[i])
+        if(list[i].name == name)
+            return list[i]
     }
-    this.selectedOptions = pressed;
-}
-
-
-let aliasTitleWindow = Window_TitleCommand.prototype.makeCommandList;
-Window_TitleCommand.prototype.makeCommandList = function(){
-    aliasTitleWindow.call(this)
-    this.addCommand("Test Diamond", "dMenu")
-}
-
-let aliasSceneTitle = Scene_Title.prototype.createCommandWindow;
-Scene_Title.prototype.createCommandWindow = function(){
-    aliasSceneTitle.call(this)
-    this._commandWindow.setHandler("dMenu", ()=>{DMenuManager.loadMenu("MenuA")})
-}
-
-
-function dummyCb(){
-    
-}
+} 
