@@ -122,10 +122,11 @@ Scene_DMenu.prototype.initialize = function () {
     Scene_MenuBase.prototype.initialize.call(this)
     this.setProps()
     this.loadDiamondWindows()
+    
 }
 
 Scene_DMenu.prototype.setProps = function () {
-    let settings = DMenuManager.menu;
+    let settings = DMenuManager.menu();
     this.index = -1;
     this.moveInterval = settings.animFrames;
     this.distanceMultiplier = settings.distanceMod
@@ -134,22 +135,33 @@ Scene_DMenu.prototype.setProps = function () {
     this.selectionSE = settings.selectionSE;
     this.cancelSE = settings.cancelSE;
     this.diamondImagePath = `img/${settings.diamondGraphic}.png`
-    this.BOTTOM = 0;
-    this.TOP = 1;
-    this.RIGHT = 2;
-    this.LEFT = 3;
+    this.popoutLineStyle = {brushThickness: 2, xRise: .03, xRun: .2, yRise: -.03, color: 0x000000}
+    this.down = 0;
+    this.up = 1;
+    this.right = 2;
+    this.left = 3;
     this.settings = settings;
+    this.stage = new PIXI.Container
+    this.lines = new PIXI.Container
+    this.diamondContainer = new PIXI.Container
+    this.stage.addChild(this.diamondContainer, this.lines)
+    this.addChild(this.stage)
+}
+
+Scene_DMenu.prototype.fontStyle = function(){
+    return new PIXI.TextStyle({
+        fontSize: 14
+    })
 }
 
 
 Scene_DMenu.prototype.loadDiamondWindows = function () {
-    let cont = new PIXI.Container;
+    let cont = this.diamondContainer
 
     for (let i = 0; i < 4; i++) {
         cont.addChild(this.createDiamondSprite())
     }
     this._diamondsInitialized = false;
-    this.diamondContainer = cont;
 }
 
 Scene_DMenu.prototype.createDiamondSprite = function () {
@@ -157,6 +169,46 @@ Scene_DMenu.prototype.createDiamondSprite = function () {
 
     spr.anchor.set(.5)
     return spr
+}
+
+Scene_DMenu.prototype.removePIXIGraphics = function(){
+    this.removeChild(this.stage)
+    this.stage.destroy(true);
+    this.stage = undefined;
+}
+
+Scene_DMenu.prototype.drawPopoutLines = function(){
+    let length = 4;
+    let style = this.popoutLineStyle;
+    let cont = this.lines;
+
+    for(let i = 0; i < length; i++){
+        let line = new PIXI.Graphics
+        line.lineStyle(style.brushThickness, style.color, 1)
+        line.lineTo(Graphics.width * style.xRise, Graphics.height * style.yRise)
+        line.lineTo(line.x + Graphics.width * style.xRun, Graphics.height * style.yRise)
+
+        // line.width += line.width * -1 * 2 * (i % 2)
+        cont.addChild(line)
+    }
+}
+
+
+Scene_DMenu.prototype.createDiamondText = function(){
+    let list = [
+        this.diamondContainer.children[this.left],
+        this.diamondContainer.children[this.up],
+        this.diamondContainer.children[this.right],
+        this.diamondContainer.children[this.down]
+    ]
+    let length = 4;
+
+    for(let i = 0; i < length; i++){
+        let txt = new PIXI.Text(`Option ${i}`, this.fontStyle())
+
+        list[i].addChild(txt)
+        txt.pivot.set(txt.width / 2, txt.height / 2)
+    }
 }
 
 Scene_DMenu.prototype.diamondsLoaded = function () {
@@ -169,19 +221,22 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
     }
 
     this.initializeDiamondPositions()
+    // this.drawPopoutLines()
+    // this.initializePopoutPositions()
     this.cacheInitialPositions()
     this.setMoveInterval()
     this.setCallbackFunctions()
+    // this.createDiamondText()
     return true;
 }
 
 Scene_DMenu.prototype.setCallbackFunctions = function(){
     let settings = this.settings; 
 
-    this.selectBottom = DMenuManager.parseFunction(settings.bottomSettings.callback)
-    this.selectTop = DMenuManager.parseFunction(settings.topSettings.callback)
-    this.selectRight = DMenuManager.parseFunction(settings.rightSettings.callback)
-    this.selectLeft = DMenuManager.parseFunction(settings.leftSettings.callback)
+    this.select_down = DMenuManager.parseFunction(settings.bottomSettings.callback)
+    this.select_up = DMenuManager.parseFunction(settings.topSettings.callback)
+    this.select_right = DMenuManager.parseFunction(settings.rightSettings.callback)
+    this.select_left = DMenuManager.parseFunction(settings.leftSettings.callback)
 }
 
 Scene_DMenu.prototype.diamondWidth = function () {
@@ -197,14 +252,41 @@ Scene_DMenu.prototype.initializeDiamondPositions = function () {
     let width = this.diamondWidth()
     let height = this.diamondHeight();
 
-    this.addChild(this.diamondContainer);
-    diamonds[this.BOTTOM].position.set(0, (height * .5));
-    diamonds[this.TOP].position.set(0, (height * .5) * -1)
-    diamonds[this.RIGHT].position.set(width * .5, 0)
-    diamonds[this.LEFT].position.set((width * .5) * -1, 0)
+    diamonds[this.down].position.set(0, (height * .5));
+    diamonds[this.down].controlId = "down"
+    diamonds[this.up].position.set(0, (height * .5) * -1)
+    diamonds[this.up].controlId = "up"
+    diamonds[this.right].position.set(width * .5, 0)
+    diamonds[this.right].controlId = "right"
+    diamonds[this.left].position.set((width * .5) * -1, 0)
+    diamonds[this.left].controlId = "left"
 
 
     this.diamondContainer.position.set(Graphics.width * .5, Graphics.height * .8)
+}
+
+Scene_DMenu.prototype.initializePopoutPositions = function(){
+    let lines = this.lines.children;
+    let width = this.diamondWidth()
+    let height = this.diamondHeight()
+    let leftDiamond = this.getDiamond(this.left)
+    let rightDiamond = this.getDiamond(this.right)
+    let upDiamond = this.getDiamond(this.up)
+    let downDiamond = this.getDiamond(this.down)
+    let distMod = this.distanceMultiplier * width;
+
+    lines[this.down].position.set(downDiamond.x, downDiamond.y + distMod);
+    lines[this.down].controlId = "down"
+    lines[this.down].height *= -1
+    lines[this.up].position.set(upDiamond.x, upDiamond.y - distMod)
+    lines[this.up].controlId = "up"
+    lines[this.right].position.set(rightDiamond.x + width + distMod, rightDiamond.y + height / 2)
+    lines[this.right].controlId = "right"
+    lines[this.left].position.set(leftDiamond.x - distMod, leftDiamond.y + height / 2)
+    lines[this.left].controlId = "left"
+    lines[this.left].width *= -1
+
+    this.lines.position = this.diamondContainer.position;
 }
 
 Scene_DMenu.prototype.cacheInitialPositions = function () {
@@ -221,6 +303,16 @@ Scene_DMenu.prototype.getDiamond = function (index) {
     return this.diamondContainer.children[index]
 }
 
+Scene_DMenu.prototype.getDiamondByDirection = function(direction){
+    let list = this.diamondContainer.children;
+    let length = list.length;
+
+    for(let i = 0; i < length; i++){
+        if(list[i].controlId == direction)
+            return list[i]
+    }
+}
+
 Scene_DMenu.prototype.setMoveInterval = function () {
     let diamonds = this.diamondContainer.children;
     let width = this.diamondWidth()
@@ -228,10 +320,10 @@ Scene_DMenu.prototype.setMoveInterval = function () {
     let xMod = width / this.moveInterval * this.distanceMultiplier
     let yMod = height / this.moveInterval * this.distanceMultiplier
 
-    diamonds[this.BOTTOM].moveData = ['y', yMod]
-    diamonds[this.TOP].moveData = ['y', yMod * -1]
-    diamonds[this.RIGHT].moveData = ['x', xMod]
-    diamonds[this.LEFT].moveData = ['x', xMod * -1]
+    diamonds[this.down].moveData = ['y', yMod]
+    diamonds[this.up].moveData = ['y', yMod * -1]
+    diamonds[this.right].moveData = ['x', xMod]
+    diamonds[this.left].moveData = ['x', xMod * -1]
 }
 
 Scene_DMenu.prototype.dMenuUpdate = function () {
@@ -243,12 +335,11 @@ Scene_DMenu.prototype.dMenuUpdate = function () {
 Scene_DMenu.prototype.checkPositions = function () {
     let list = this.diamondContainer.children;
     let length = list.length;
-    let index = this.index;
 
     for (let i = 0; i < length; i++) {
         let diamond = list[i];
 
-        if (i == index) {
+        if (DMenuControl.isPressed(list[i].controlId)) {
             if (!this.isInSelectedPosition(i)) {
                 this.moveDiamond(diamond)
             }
@@ -279,40 +370,23 @@ Scene_DMenu.prototype.moveDiamond = function (diamond) {
 Scene_DMenu.prototype.returnDiamond = function (diamond) {
     diamond.moveInterval--
     diamond[diamond.moveData[0]] -= diamond.moveData[1]
-    console.log(diamond.moveInterval * this.scaleMultiplier)
     diamond.scale.set(1 + diamond.moveInterval * this.scaleMultiplier)
 }
 
 
 Scene_DMenu.prototype.checkInput = function () {
-    let playSE = false;
-
-    if (Input.isTriggered('up')) {
-        this.index = this.TOP;
-        playSE = 'highlight'
+    if(Input.isTriggered('cancel')){
+        this.removePIXIGraphics()
+        DMenuManager.popScene()
     }
 
-    if (Input.isTriggered('down')) {
-        this.index = this.BOTTOM;
-        playSE = 'highlight'
-    }
+    DMenuControl.pollControls()
 
-    if (Input.isTriggered('left')) {
-        this.index = this.LEFT;
-        playSE = 'highlight'
+    if(!DMenuControl.isPressed() && DMenuControl.selectedOptions.length){
+        let key = DMenuControl.selectedOptions[0]
+        this[`select_${key}`]()
     }
-
-    if (Input.isTriggered('right')) {
-        this.index = this.RIGHT;
-        playSE = 'highlight'
-    }
-
-    if (Input.isTriggered('ok')) {
-        this.makeSelection()
-        playSE = 'selection'
-    }
-
-    this.playSE = playSE;
+    DMenuControl.setActiveSelections()
 }
 
 Scene_DMenu.prototype.checkSEPlay = function () {
@@ -332,41 +406,20 @@ Scene_DMenu.prototype.playSound = function (name) {
     AudioManager.playSe(options)
 }
 
-Scene_DMenu.prototype.makeSelection = function () {
-    let playSE = false;
 
-        switch (this.index) {
-            case this.BOTTOM:
-                this.selectBottom()
-                break;
-            case this.TOP:
-                this.selectTop()
-                break;
-            case this.RIGHT:
-                this.selectRight()
-                break;
-            case this.LEFT:
-                this.selectLeft()
-                break;
-            default:
-        }
-
-    this.playSE = playSE;
-}
-
-Scene_DMenu.prototype.selectBottom = function(){
+Scene_DMenu.prototype.select_down = function(){
     console.log('selected bottom')
 }
 
-Scene_DMenu.prototype.selectTop = function(){
+Scene_DMenu.prototype.select_top = function(){
     console.log('selected top')    
 }
 
-Scene_DMenu.prototype.selectLeft = function(){
+Scene_DMenu.prototype.select_left = function(){
     console.log('selected left')    
 }
 
-Scene_DMenu.prototype.selectRight = function(){
+Scene_DMenu.prototype.select_right = function(){
     console.log('selected right')    
 }
 
@@ -389,6 +442,9 @@ Scene_DMenu.prototype.update = function () {
 function DMenuManager(){
     throw new Error('This is a static class')
 }
+
+DMenuManager.sceneSettings = [];
+DMenuControl.selectedOptions = [];
 
 DMenuManager.getSettings = function(type, name){
     let list = type == 'menu' ? 
@@ -415,14 +471,17 @@ DMenuManager.loadMenu = function(name){
         menu.rightSettings = this.getSettings('option', menu.right)
         menu.leftSettings = this.getSettings('option', menu.left)
 
-        this.menu = menu;
+        this.sceneSettings.push(menu)
         SceneManager.push(Scene_DMenu)
     }
 }
 
+DMenuManager.menu = function(){
+    return this.sceneSettings[this.sceneSettings.length - 1]
+}
+
 
 DMenuManager.parseFunction = function(path){
-    console.log(path)
     path = path.split('.')
     let obj = path.length > 1 ? window[path.shift()] : window;
     let length = path.length;
@@ -433,9 +492,14 @@ DMenuManager.parseFunction = function(path){
     return obj;
 };
 
+DMenuManager.popScene = function(){
+    this.sceneSettings.pop()
+    SceneManager.pop()
+}
+
 
 function funcA(){
-    console.log('ran func A')
+    DMenuManager.loadMenu('MenuB')
 }
 
 function funcB(){
@@ -448,4 +512,60 @@ function funcC(){
 
 function funcD(){
     console.log('ran func d')
+}
+
+
+
+function DMenuControl(){
+    throw new Error('This is a static class')
+}
+
+DMenuControl.controls = {left:false, right:false, up:false, down:false}
+
+DMenuControl.isPressed = function(direction){
+    direction = direction ? [this.controls[direction]] : Object.values(this.controls)
+    return direction.indexOf(true) != -1
+}
+
+DMenuControl.pollControls = function(){
+    this.pollDirections()
+}
+
+DMenuControl.pollDirections = function(){
+    let list = Object.keys(this.controls)
+    let length = 4;
+
+    for(let i = 0; i < length; i++){
+        if(Input.isPressed(list[i])){
+            this.controls[list[i]] = true;
+        } else {
+            this.controls[list[i]] = false;
+        }
+    }
+}
+
+DMenuControl.setActiveSelections = function(){
+    let list = this.controls
+    let keys = Object.keys(list)
+    let length = 4;
+    let pressed = []
+
+    for(let i = 0; i < length; i++){
+        if(list[keys[i]])
+            pressed.push(keys[i])
+    }
+    this.selectedOptions = pressed;
+}
+
+
+let aliasTitleWindow = Window_TitleCommand.prototype.makeCommandList;
+Window_TitleCommand.prototype.makeCommandList = function(){
+    aliasTitleWindow.call(this)
+    this.addCommand("Test Diamond", "dMenu")
+}
+
+let aliasSceneTitle = Scene_Title.prototype.createCommandWindow;
+Scene_Title.prototype.createCommandWindow = function(){
+    aliasSceneTitle.call(this)
+    this._commandWindow.setHandler("dMenu", ()=>{DMenuManager.loadMenu("MenuA")})
 }
