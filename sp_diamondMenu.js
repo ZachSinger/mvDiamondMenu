@@ -144,7 +144,7 @@ Scene_DMenu.prototype.setProps = function () {
     this.settings = DMenuManager.menu();
     this.index = -1;
     this.diamondImagePath = `img/${this.settings.diamondGraphic}.png`
-    this.popoutLineStyle = { brushThickness: 2, xRise: .03, xRun: .15, yRise: -0.02, color: this.txtColor }
+    this.popoutLineStyle = { brushThickness: 2, xRise: .03, xRun: .15, yRise: -0.02}
     this.setAnimationValues()
     this.initializeAudioSettings()
     this.initializeOptions()
@@ -287,19 +287,19 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
 Scene_DMenu.prototype.initializeDiamondPositions = function () {
     let diamonds = this.diamondContainer.children;
     let width = this.diamondWidth()
-    let height = width
+    let adj = width * .05
 
-    diamonds[this.down].position.set(0, (height * .5));
+    diamonds[this.down].position.set(0, (width * .5) + adj);
     diamonds[this.down].controlId = "down"
-    diamonds[this.up].position.set(0, (height * .5) * -1)
+    diamonds[this.up].position.set(0, ((width * .5) * -1) - adj)
     diamonds[this.up].controlId = "up"
-    diamonds[this.right].position.set(width * .5, 0)
+    diamonds[this.right].position.set(width * .5 + adj, 0)
     diamonds[this.right].controlId = "right"
-    diamonds[this.left].position.set((width * .5) * -1, 0)
+    diamonds[this.left].position.set(((width * .5) * -1) - adj, 0)
     diamonds[this.left].controlId = "left"
 
 
-    this.diamondContainer.position.set(Graphics.width * .5, Graphics.height * .7)
+    this.diamondContainer.position.set(Graphics.width * .5, Graphics.height * .5)
 }
 
 Scene_DMenu.prototype.cacheInitialPositions = function () {
@@ -348,7 +348,7 @@ Scene_DMenu.prototype.fontStyle = function (align) {
     align = align || 'left'
     return new PIXI.TextStyle({
         fontSize: 14,
-        fill: settings.fill,
+        fill: settings.color,
         wordWrap: true,
         wordWrapWidth: this.popoutLineStyle.xRun * Graphics.width,
         align: align
@@ -442,12 +442,6 @@ DMenuManager.popScene = function () {
     this.sceneSettings.pop()
     SceneManager.pop()
 }
-
-
-
-
-
-//ONE BIG CHANGE
 
 
 
