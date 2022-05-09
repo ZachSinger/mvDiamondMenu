@@ -269,7 +269,7 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
 
     this.initializeDiamondPositions()
     this.cacheInitialPositions()
-    // this.setMoveInterval()
+    this.setMoveInterval()
     // this.setCallbackFunctions()
     this.createDiamondText()
     // this.createTitleText()
@@ -288,6 +288,8 @@ Scene_DMenu.prototype.initializeDiamondPositions = function () {
     let diamonds = this.diamondContainer.children;
     let width = this.diamondWidth()
     let adj = width * .05
+
+    this.activePosition = [diamonds[this.down].x, diamonds[this.down].y]
 
     diamonds[this.down].position.set(0, (width * .5) + adj);
     diamonds[this.down].controlId = "down"
@@ -326,7 +328,7 @@ Scene_DMenu.prototype.createDiamondText = function () {
         
         if(thisOption >= 0){
             console.log(thisOption)
-            let txt = this.createTextObject('Option ' + thisOption, 'left')
+            let txt = this.createTextObject('Option ' + thisOption + 1, 'left')
             list[i].addChild(txt)
             txt.pivot.set(txt.width / 2, txt.height / 2)
             list[i].optionText = txt;
@@ -334,6 +336,18 @@ Scene_DMenu.prototype.createDiamondText = function () {
         }
         
     }
+}
+
+Scene_DMenu.prototype.setMoveInterval = function () {
+    let diamonds = this.diamondContainer.children;
+    let width = this.diamondWidth()
+    let xMod = width / this.moveInterval * this.distanceMultiplier
+    let yMod = width / this.moveInterval * this.distanceMultiplier
+
+    diamonds[this.down].moveData = ['y', yMod]
+    diamonds[this.up].moveData = ['y', yMod * -1]
+    diamonds[this.right].moveData = ['x', xMod]
+    diamonds[this.left].moveData = ['x', xMod * -1]
 }
 
 
@@ -367,18 +381,128 @@ Scene_DMenu.prototype.diamondWidth = function () {
     return this.diamondContainer.children[0].width;
 }
 
-
+Scene_DMenu.prototype.getDiamond = function (index) {
+    return this.diamondContainer.children[index]
+}
 
 Scene_DMenu.prototype.update = function () {
     if (!this._diamondsInitialized) {
         return this._diamondsInitialized = this.diamondsLoaded()
     }
     Scene_MenuBase.prototype.update.call(this)
-    // this.dMenuUpdate()
+    this.dMenuUpdate()
+}
+
+
+Scene_DMenu.prototype.dMenuUpdate = function () {
+    this.checkPositions()
+    this.checkInput()
+    // this.checkSEPlay()
+}
+
+Scene_DMenu.prototype.checkPositions = function () {
+    let list = this.diamondContainer.children;
+    let length = list.length;
+
+    for (let i = 0; i < length; i++) {
+        let diamond = list[i];
+        // diamond.popoutLine.visible = false;
+        if(diamond.isActive){
+            if(!this.triggered){
+                this.triggered = true;
+                console.log('hit active position')
+                this.diamondContainer.swapChildren(diamond, list[3])
+                standardPlayer.sp_Animations.createAnimation(diamond)
+                .action(0)
+                .moveXY(this.activePosition[0], this.activePosition[1], 20, 0)
+                .then()
+                .setScale(1.5, 1.5, 20, 0)
+                .setAlpha(0, 20, 0)
+                .prepareStep()
+                .activate()
+                this.fadeNonSelected(diamond)
+                continue
+                
+            }
+                
+            
+        } else
+        if (DMenuControl.isPressed(list[i].controlId)) {
+            if (!this.isInSelectedPosition(i)) {
+                this.moveDiamond(diamond)
+            } else {
+                // diamond.popoutLine.visible = true;
+            }
+        } else if (!this.isInitialPosition(i)) {
+            this.returnDiamond(diamond)
+        }
+    }
+}
+
+Scene_DMenu.prototype.fadeNonSelected = function(diamond){
+    let list = this.diamondContainer.children;
+    let length = list.length;
+
+    for(let i = 0; i < length; i++){
+        if(diamond == list[i])
+            continue
+
+        standardPlayer.sp_Animations.createAnimation(list[i])
+        .action(0)
+        .setAlpha(0, 15, 0)
+        .prepareStep()
+        .activate()
+    }
+}
+
+
+Scene_DMenu.prototype.isInSelectedPosition = function (index) {
+    let diamond = this.getDiamond(index);
+
+    return diamond.moveInterval == this.moveInterval;
+}
+
+Scene_DMenu.prototype.isInActivePosition = function(diamond){
+    let activePosition = this.activePosition;
+    return (diamond.x == activePosition[0] && diamond.y == activePosition[1])
+}
+
+Scene_DMenu.prototype.isInitialPosition = function (index) {
+    let diamond = this.getDiamond(index)
+    return !diamond.moveInterval;
+}
+
+Scene_DMenu.prototype.moveDiamond = function (diamond) {
+    diamond.moveInterval++
+    diamond[diamond.moveData[0]] += diamond.moveData[1]
+    diamond.scale.set(1 + diamond.moveInterval * this.scaleMultiplier)
 }
 
 
 
+Scene_DMenu.prototype.returnDiamond = function (diamond) {
+    diamond.moveInterval--
+    diamond[diamond.moveData[0]] -= diamond.moveData[1]
+    diamond.scale.set(1 + diamond.moveInterval * this.scaleMultiplier)
+}
+
+
+Scene_DMenu.prototype.checkInput = function () {
+    if (Input.isTriggered('cancel')) {
+        // this.removePIXIGraphics()
+        // DMenuManager.popScene()
+    }
+
+    DMenuControl.pollControls()
+
+    if (!DMenuControl.isPressed() && DMenuControl.selectedOptions.length) {
+        let key = DMenuControl.selectedOptions[0]
+        // this[`select_${key}`]()
+        console.log('selected')
+        this.getDiamond(this[key]).isActive = true;
+    }
+    DMenuControl.setActiveSelections()
+}
 
 
 
@@ -390,7 +514,6 @@ function DMenuManager() {
 }
 
 DMenuManager.sceneSettings = [];
-// DMenuControl.selectedOptions = [];
 
 DMenuManager.getSettings = function (type, name) {
     let list = type == 'menu' ?
@@ -444,7 +567,47 @@ DMenuManager.popScene = function () {
 }
 
 
+function DMenuControl() {
+    throw new Error('This is a static class')
+}
 
+DMenuControl.controls = { left: false, right: false, up: false, down: false }
+DMenuControl.selectedOptions = [];
+
+DMenuControl.isPressed = function (direction) {
+    direction = direction ? [this.controls[direction]] : Object.values(this.controls)
+    return direction.indexOf(true) != -1
+}
+
+DMenuControl.pollControls = function () {
+    this.pollDirections()
+}
+
+DMenuControl.pollDirections = function () {
+    let list = Object.keys(this.controls)
+    let length = 4;
+
+    for (let i = 0; i < length; i++) {
+        if (Input.isPressed(list[i])) {
+            this.controls[list[i]] = true;
+        } else {
+            this.controls[list[i]] = false;
+        }
+    }
+}
+
+DMenuControl.setActiveSelections = function () {
+    let list = this.controls
+    let keys = Object.keys(list)
+    let length = 4;
+    let pressed = []
+
+    for (let i = 0; i < length; i++) {
+        if (list[keys[i]])
+            pressed.push(keys[i])
+    }
+    this.selectedOptions = pressed;
+}
 
 let aliasTitleWindow = Window_TitleCommand.prototype.makeCommandList;
 Window_TitleCommand.prototype.makeCommandList = function () {
