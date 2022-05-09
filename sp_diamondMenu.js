@@ -214,21 +214,36 @@ Scene_DMenu.prototype.setOptions = function () {
 }
 
 Scene_DMenu.prototype.setFourOptions = function () {
+    let options = this.settings.options;
+
     this.option1 = this.up;
+    this.select_up = DMenuManager.parseFunction(options[0].callback)
     this.option2 = this.left;
+    this.select_left = DMenuManager.parseFunction(options[1].callback)
     this.option3 = this.right;
+    this.select_right = DMenuManager.parseFunction(options[2].callback)
     this.option4 = this.down;
+    this.select_down = DMenuManager.parseFunction(options[3].callback)
 }
 
 Scene_DMenu.prototype.setThreeOptions = function () {
+    let options = this.settings.options;
+
     this.option1 = this.up;
+    this.select_up = DMenuManager.parseFunction(options[0].callback)
     this.option2 = this.left;
+    this.select_left = DMenuManager.parseFunction(options[1].callback)
     this.option3 = this.right;
+    this.select_right = DMenuManager.parseFunction(options[2].callback)
 }
 
 Scene_DMenu.prototype.setTwoOptions = function () {
+    let options = this.settings.options;
+
     this.option1 = this.left;
+    this.select_left = DMenuManager.parseFunction(options[0].callback)
     this.option2 = this.right;
+    this.select_right = DMenuManager.parseFunction(options[1].callback)
 }
 
 /** Initialization
@@ -309,22 +324,21 @@ Scene_DMenu.prototype.cacheInitialPositions = function () {
 
 Scene_DMenu.prototype.createDiamondText = function () {
     let list = [
-        this.diamondContainer.children[this.left],
-        this.diamondContainer.children[this.up],
-        this.diamondContainer.children[this.right],
-        this.diamondContainer.children[this.down]
+        this.option1,
+        this.option2,
+        this.option3,
+        this.option4
     ]
     let length = 4;
 
     for (let i = 0; i < length; i++) {
-        let thisOption = this['option' + (i + 1)]
-        
-        if(thisOption >= 0){
-            console.log(thisOption)
-            let txt = this.createTextObject('Option ' + thisOption + 1, 'left')
-            list[i].addChild(txt)
+        if(list[i] >= 0){
+            let diamond = this.getDiamond(list[i])
+            console.log(list[i])
+            let txt = this.createTextObject('Option ' + list[i], 'left')
+            diamond.addChild(txt)
             txt.pivot.set(txt.width / 2, txt.height / 2)
-            list[i].optionText = txt;
+            diamond.optionText = txt;
 
         }
         
@@ -343,6 +357,11 @@ Scene_DMenu.prototype.setMoveInterval = function () {
     diamonds[this.left].moveData = ['x', xMod * -1]
 }
 
+Scene_DMenu.prototype.setCallbackFunctions = function () {
+    let settings = this.settings;
+
+    
+}
 
 
 /**
@@ -431,6 +450,7 @@ Scene_DMenu.prototype.checkPositions = function () {
                 .setScale(1.5, 1.5, 20, 0)
                 .setAlpha(0, 20, 0)
                 .prepareStep()
+                .setMasterCb(()=>{this[`select_${diamond.controlId}`]()})
                 .activate()
                 this.fadeNonSelected(diamond)
                 continue
@@ -514,8 +534,6 @@ Scene_DMenu.prototype.checkInput = function () {
 
     if (!DMenuControl.isPressed() && DMenuControl.selectedOptions.length) {
         let key = DMenuControl.selectedOptions[0]
-        // this[`select_${key}`]()
-        console.log('selected')
         this.getDiamond(this[key]).isActive = true;
     }
     DMenuControl.setActiveSelections()
@@ -603,9 +621,10 @@ DMenuControl.pollControls = function () {
 DMenuControl.pollDirections = function () {
     let list = Object.keys(this.controls)
     let length = 4;
+    let scn = SceneManager._scene;
 
     for (let i = 0; i < length; i++) {
-        if (Input.isPressed(list[i])) {
+        if (Input.isPressed(list[i]) && scn['option' + (i + 1)] >= 0) {
             this.controls[list[i]] = true;
         } else {
             this.controls[list[i]] = false;
@@ -637,3 +656,10 @@ Scene_Title.prototype.createCommandWindow = function () {
     aliasSceneTitle.call(this)
     this._commandWindow.setHandler("dMenu", () => { DMenuManager.loadMenu("MenuA") })
 }
+
+
+DMenuCB = {}
+DMenuCB.attack = function () { console.log('attack')}
+DMenuCB.defend = function () { console.log('defend')}
+DMenuCB.insult = function () { console.log('insult')}
+DMenuCB.blink = function () { console.log('blink')}
