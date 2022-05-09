@@ -18,6 +18,11 @@
  * @text Name
  * @desc Used to identify this Option when setting up Menus
  * 
+ * @param diamondText
+ * @type text
+ * @text Diamond Text
+ * @desc The text that will display inside of the diamond
+ * 
  * @param callback
  * @type text
  * @text Callback
@@ -138,23 +143,23 @@ Scene_DMenu.prototype.setProps = function () {
     this.settings = DMenuManager.menu();
     this.index = -1;
     this.diamondImagePath = `img/${this.settings.diamondGraphic}.png`
-    this.popoutLineStyle = { brushThickness: 2, xRise: .03, xRun: .15, yRise: -0.02}
+    this.popoutLineStyle = { brushThickness: 2, xRise: .03, xRun: .15, yRise: -0.02 }
     this.setAnimationValues()
     this.initializeAudioSettings()
     this.initializeOptions()
     this.createGraphicsContainers()
 }
 
-Scene_DMenu.prototype.setAnimationValues = function(){
-    let settings = this.settings; 
+Scene_DMenu.prototype.setAnimationValues = function () {
+    let settings = this.settings;
 
     this.moveInterval = settings.animFrames;
     this.distanceMultiplier = settings.distanceMod;
     this.scaleMultiplier = settings.scaleMod;
 }
 
-Scene_DMenu.prototype.initializeAudioSettings = function(){
-    let settings = this.settings; 
+Scene_DMenu.prototype.initializeAudioSettings = function () {
+    let settings = this.settings;
 
     this.releaseSE = settings.releaseSE;
     this.selectionSE = settings.selectionSE;
@@ -175,7 +180,7 @@ Scene_DMenu.prototype.createGraphicsContainers = function () {
  * ----Options
  */
 
-Scene_DMenu.prototype.initializeOptions = function(){
+Scene_DMenu.prototype.initializeOptions = function () {
     this.initializeDirections()
     this.initializeOptionValues()
     this.setOptions()
@@ -201,14 +206,18 @@ Scene_DMenu.prototype.setOptions = function () {
     switch (length) {
         case 2:
             this.setTwoOptions()
+            this.menuOptionCount = 2;
             break;
         case 3:
             this.setThreeOptions()
+            this.menuOptionCount = 3;
             break;
         case 4:
             this.setFourOptions()
+            this.menuOptionCount = 4;
             break;
         default:
+            this.menuOptionCount = 1;
 
     }
 }
@@ -217,12 +226,16 @@ Scene_DMenu.prototype.setFourOptions = function () {
     let options = this.settings.options;
 
     this.option1 = this.up;
+    this.option1Settings = options[0]
     this.select_up = DMenuManager.parseFunction(options[0].callback)
     this.option2 = this.left;
+    this.option2Settings = options[1]
     this.select_left = DMenuManager.parseFunction(options[1].callback)
     this.option3 = this.right;
+    this.option3Settings = options[2]
     this.select_right = DMenuManager.parseFunction(options[2].callback)
     this.option4 = this.down;
+    this.option4Settings = options[3]
     this.select_down = DMenuManager.parseFunction(options[3].callback)
 }
 
@@ -230,10 +243,13 @@ Scene_DMenu.prototype.setThreeOptions = function () {
     let options = this.settings.options;
 
     this.option1 = this.up;
+    this.option1Settings = options[0]
     this.select_up = DMenuManager.parseFunction(options[0].callback)
     this.option2 = this.left;
+    this.option2Settings = options[1]
     this.select_left = DMenuManager.parseFunction(options[1].callback)
     this.option3 = this.right;
+    this.option3Settings = options[2]
     this.select_right = DMenuManager.parseFunction(options[2].callback)
 }
 
@@ -241,8 +257,10 @@ Scene_DMenu.prototype.setTwoOptions = function () {
     let options = this.settings.options;
 
     this.option1 = this.left;
+    this.option1Settings = options[0]
     this.select_left = DMenuManager.parseFunction(options[0].callback)
     this.option2 = this.right;
+    this.option2Settings = options[1]
     this.select_right = DMenuManager.parseFunction(options[1].callback)
 }
 
@@ -280,10 +298,10 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
     this.setMoveInterval()
     // this.setCallbackFunctions()
     this.createDiamondText()
-    // this.createTitleText()
-    // this.createDescText()
-    // this.drawPopoutLines()
-    // this.initializeTextPositions()
+    this.drawPopoutLines()
+    this.createTitleText()
+    this.createDescText()
+    this.initializeTextPositions()
     // this.initializeDescPositions()
     this.stage.addChild(this.diamondContainer)
     // this.stage.addChild(this.lines)
@@ -332,16 +350,16 @@ Scene_DMenu.prototype.createDiamondText = function () {
     let length = 4;
 
     for (let i = 0; i < length; i++) {
-        if(list[i] >= 0){
+        if (list[i] >= 0) {
             let diamond = this.getDiamond(list[i])
             console.log(list[i])
-            let txt = this.createTextObject('Option ' + list[i], 'left')
+            let txt = this.createTextObject(this['option' + (i + 1) + 'Settings'].diamondText, 'left')
             diamond.addChild(txt)
             txt.pivot.set(txt.width / 2, txt.height / 2)
             diamond.optionText = txt;
 
         }
-        
+
     }
 }
 
@@ -357,8 +375,96 @@ Scene_DMenu.prototype.setMoveInterval = function () {
     diamonds[this.left].moveData = ['x', xMod * -1]
 }
 
-Scene_DMenu.prototype.setCallbackFunctions = function () {
-    let settings = this.settings;
+Scene_DMenu.prototype.drawPopoutLines = function () {
+    let diamonds = this.diamondContainer.children;
+    let length = this.menuOptionCount;
+
+    switch (length) {
+        case 4:
+            this.createPopoutLine(diamonds[this.up], true)
+            this.createPopoutLine(diamonds[this.left], true)
+            this.createPopoutLine(diamonds[this.right])
+            this.createPopoutLine(diamonds[this.down])
+            break
+        case 3:
+            this.createPopoutLine(diamonds[this.up], true)
+            this.createPopoutLine(diamonds[this.left], true)
+            this.createPopoutLine(diamonds[this.right])
+            break;
+        case 2:
+            this.createPopoutLine(diamonds[this.left], true)
+            this.createPopoutLine(diamonds[this.right])
+            break;
+        default:
+    }
+}
+
+Scene_DMenu.prototype.createTitleText = function () {
+    let titles = []
+    let list = [
+        this.option1,
+        this.option2,
+        this.option3,
+        this.option4
+    ]
+    let length = 4;
+
+    for (let i = 0; i < length; i++) {
+        if (list[i] >= 0) {
+            let diamond = this.getDiamond(list[i])
+            let option = this['option' + (i + 1) + 'Settings']
+            let title = this.createTextObject(option.title)
+            titles.push(title)
+            diamond.dTitle = title;
+            diamond.popoutLine.addChild(title)
+            title.position.set(diamond.bX, diamond.bY)
+        }
+    }
+
+    this.titles = titles;
+}
+
+Scene_DMenu.prototype.createDescText = function () {
+    let descriptions = []
+    let list = [
+        this.option1,
+        this.option2,
+        this.option3,
+        this.option4
+    ]
+    let length = 4;
+
+    for (let i = 0; i < length; i++) {
+        if (list[i] >= 0) {
+            let diamond = this.getDiamond(list[i])
+            let option = this['option' + (i + 1) + 'Settings']
+            let desc = this.createTextObject(option.desc)
+            descriptions.push(desc)
+            list[i].dDesc = desc;
+            diamond.dDesc = desc;
+            diamond.popoutLine.addChild(desc);
+            desc.position.set(diamond.bX, diamond.bY)
+        }
+    }
+
+    this.descriptions = descriptions;
+}
+
+Scene_DMenu.prototype.initializeTextPositions = function(){
+    let options = this.getOptions();
+    let length = options.length;
+
+    for(let i = 0; i < length; i++){
+        if(options[i] >= 0){
+            let diamond = this.getDiamond(options[i])
+            diamond.dTitle.y -= Graphics.height * .025;
+            if(!diamond.isLeftLine){
+                console.log('is not left line')
+                diamond.dTitle.x -= diamond.dTitle.met.width
+                diamond.dDesc.x -= diamond.dDesc.met.width
+            }
+        }
+    }
 
     
 }
@@ -369,6 +475,16 @@ Scene_DMenu.prototype.setCallbackFunctions = function () {
  * Utility Functions
  * ---------------------------------------------------------------------------------------------------------------------------------
  */
+
+Scene_DMenu.prototype.getOptions = function(){
+    return [
+        this.option1,
+        this.option2,
+        this.option3,
+        this.option4
+    ]
+}
+
 Scene_DMenu.prototype.fontStyle = function (align) {
     let settings = this.settings;
     align = align || 'left'
@@ -381,12 +497,37 @@ Scene_DMenu.prototype.fontStyle = function (align) {
     })
 }
 
-Scene_DMenu.prototype.createTextObject = function(txt, align){
+Scene_DMenu.prototype.createTextObject = function (txt, align) {
     let text = new PIXI.Text(txt, this.fontStyle(align))
     let met = PIXI.TextMetrics.measureText(txt, this.fontStyle(align))
     text.met = met;
 
     return text;
+}
+
+Scene_DMenu.prototype.createPopoutLine = function (diamond, left) {
+    left = left ? -1 : 1
+    let line = new PIXI.Graphics;
+    let style = this.popoutLineStyle;
+    let color = this.settings.color == 'white' ? 0xFFFFFF : 0x000000
+    let widthMod = Math.round(((this.diamondWidth() * .25) * left) + (left * Graphics.width * .002))
+    let aX = widthMod + (style.xRise * Graphics.width) * left;
+    let aY = widthMod + (style.yRise * Graphics.height) * -left
+    let bX = aX + (style.xRun * Graphics.width) * left
+    let bY = aY;
+
+    diamond.addChild(line)
+    diamond.popoutLine = line
+    diamond.bX = bX
+    diamond.bY = bY
+    diamond.isLeftLine = left == -1 ? true : false;
+
+    line.lineStyle(style.brushThickness, color, 1)
+    line.moveTo(widthMod, widthMod)
+    line.lineTo(aX, aY)
+    line.lineTo(bX, bY)
+
+    line.alpha = 0;
 }
 
 Scene_DMenu.prototype.diamondWidth = function () {
@@ -436,59 +577,63 @@ Scene_DMenu.prototype.checkPositions = function () {
 
     for (let i = 0; i < length; i++) {
         let diamond = list[i];
-        // diamond.popoutLine.visible = false;
-        if(diamond.isActive){
-            if(!this.triggered){
+        if (diamond.popoutLine)
+            // diamond.popoutLine.visible = false;
+            diamond.popoutLine.alpha = diamond.moveInterval / this.moveInterval
+
+        if (diamond.isActive) {
+            if (!this.triggered) {
                 this.playSE = 'release'
                 this.triggered = true;
                 console.log('hit active position')
                 this.diamondContainer.swapChildren(diamond, list[3])
                 standardPlayer.sp_Animations.createAnimation(diamond)
-                .action(0)
-                .moveXY(this.activePosition[0], this.activePosition[1], 20, 0)
-                .then()
-                .setScale(1.5, 1.5, 20, 0)
-                .setAlpha(0, 20, 0)
-                .prepareStep()
-                .setMasterCb(()=>{this[`select_${diamond.controlId}`]()})
-                .activate()
+                    .action(0)
+                    .moveXY(this.activePosition[0], this.activePosition[1], 20, 0)
+                    .then()
+                    .setScale(1.5, 1.5, 20, 0)
+                    .setAlpha(0, 20, 0)
+                    .prepareStep()
+                    .setMasterCb(() => { this[`select_${diamond.controlId}`]() })
+                    .activate()
                 this.fadeNonSelected(diamond)
                 continue
-                
+
             }
-                
-            
+
+
         } else
-        if (DMenuControl.isPressed(list[i].controlId)) {
-            if (!this.isInSelectedPosition(i)) {
-                this.moveDiamond(diamond)
-                this.playSE = diamond.sePlayed ? false : 'selection'
-                diamond.sePlayed = true
-            
-            } else {
-                // diamond.popoutLine.visible = true;
+            if (DMenuControl.isPressed(list[i].controlId)) {
+                if (!this.isInSelectedPosition(i)) {
+                    this.moveDiamond(diamond)
+                    this.playSE = diamond.sePlayed ? false : 'selection'
+                    diamond.sePlayed = true
+
+                } else {
+                    
+                    // diamond.popoutLine.visible = true;
+                }
+
+            } else if (!this.isInitialPosition(i)) {
+                this.returnDiamond(diamond)
+                diamond.sePlayed = false;
             }
-                
-        } else if (!this.isInitialPosition(i)) {
-            this.returnDiamond(diamond)
-            diamond.sePlayed = false;
-        }
     }
 }
 
-Scene_DMenu.prototype.fadeNonSelected = function(diamond){
+Scene_DMenu.prototype.fadeNonSelected = function (diamond) {
     let list = this.diamondContainer.children;
     let length = list.length;
 
-    for(let i = 0; i < length; i++){
-        if(diamond == list[i])
+    for (let i = 0; i < length; i++) {
+        if (diamond == list[i])
             continue
 
         standardPlayer.sp_Animations.createAnimation(list[i])
-        .action(0)
-        .setAlpha(0, 15, 0)
-        .prepareStep()
-        .activate()
+            .action(0)
+            .setAlpha(0, 15, 0)
+            .prepareStep()
+            .activate()
     }
 }
 
@@ -499,7 +644,7 @@ Scene_DMenu.prototype.isInSelectedPosition = function (index) {
     return diamond.moveInterval == this.moveInterval;
 }
 
-Scene_DMenu.prototype.isInActivePosition = function(diamond){
+Scene_DMenu.prototype.isInActivePosition = function (diamond) {
     let activePosition = this.activePosition;
     return (diamond.x == activePosition[0] && diamond.y == activePosition[1])
 }
@@ -532,10 +677,10 @@ Scene_DMenu.prototype.checkInput = function () {
 
     DMenuControl.pollControls()
 
-    if (!DMenuControl.isPressed() && DMenuControl.selectedOptions.length) {
-        let key = DMenuControl.selectedOptions[0]
-        this.getDiamond(this[key]).isActive = true;
+    if (Input.isTriggered('ok') && DMenuControl.selectedOptions.length == 1) {
+        this.getDiamond(this[DMenuControl.selectedOptions[0]]).isActive = true;
     }
+
     DMenuControl.setActiveSelections()
 }
 
@@ -570,10 +715,10 @@ DMenuManager.loadMenu = function (name) {
     let menu = this.getSettings('menu', name)
     let options = [];
     if (menu) {
-        menu.options.forEach(option =>{
+        menu.options.forEach(option => {
             options.push(this.getSettings('option', option))
         })
-        
+
         menu.options = options;
         this.sceneSettings.push(menu)
         SceneManager.push(Scene_DMenu)
@@ -659,7 +804,7 @@ Scene_Title.prototype.createCommandWindow = function () {
 
 
 DMenuCB = {}
-DMenuCB.attack = function () { console.log('attack')}
-DMenuCB.defend = function () { console.log('defend')}
-DMenuCB.insult = function () { console.log('insult')}
-DMenuCB.blink = function () { console.log('blink')}
+DMenuCB.attack = function () { console.log('attack') }
+DMenuCB.defend = function () { console.log('defend') }
+DMenuCB.insult = function () { console.log('insult') }
+DMenuCB.blink = function () { console.log('blink') }
