@@ -81,12 +81,6 @@
  * @option black
  * @default white
  * 
- * @param highlightSE
- * @type file
- * @dir audio/se
- * @text Highlight SE
- * @desc Name of SE file to play when an option is highlighted 
- * 
  * @param releaseSE
  * @type file
  * @dir audio/se
@@ -162,7 +156,6 @@ Scene_DMenu.prototype.setAnimationValues = function(){
 Scene_DMenu.prototype.initializeAudioSettings = function(){
     let settings = this.settings; 
 
-    this.highlightSE = settings.highlightSE;
     this.releaseSE = settings.releaseSE;
     this.selectionSE = settings.selectionSE;
     this.cancelSE = settings.cancelSE;
@@ -397,7 +390,25 @@ Scene_DMenu.prototype.update = function () {
 Scene_DMenu.prototype.dMenuUpdate = function () {
     this.checkPositions()
     this.checkInput()
-    // this.checkSEPlay()
+    this.checkSEPlay()
+}
+
+Scene_DMenu.prototype.checkSEPlay = function () {
+    if (this.playSE && this[`${this.playSE}SE`]) {
+        this.playSound(this[`${this.playSE}SE`])
+    }
+    this.playSE = false;
+}
+
+Scene_DMenu.prototype.playSound = function (name) {
+    console.log('play sound')
+    let options = {
+        name: name,
+        pitch: 50,
+        volume: 100,
+        pan: 0
+    }
+    AudioManager.playSe(options)
 }
 
 Scene_DMenu.prototype.checkPositions = function () {
@@ -409,6 +420,7 @@ Scene_DMenu.prototype.checkPositions = function () {
         // diamond.popoutLine.visible = false;
         if(diamond.isActive){
             if(!this.triggered){
+                this.playSE = 'release'
                 this.triggered = true;
                 console.log('hit active position')
                 this.diamondContainer.swapChildren(diamond, list[3])
@@ -430,11 +442,16 @@ Scene_DMenu.prototype.checkPositions = function () {
         if (DMenuControl.isPressed(list[i].controlId)) {
             if (!this.isInSelectedPosition(i)) {
                 this.moveDiamond(diamond)
+                this.playSE = diamond.sePlayed ? false : 'selection'
+                diamond.sePlayed = true
+            
             } else {
                 // diamond.popoutLine.visible = true;
             }
+                
         } else if (!this.isInitialPosition(i)) {
             this.returnDiamond(diamond)
+            diamond.sePlayed = false;
         }
     }
 }
