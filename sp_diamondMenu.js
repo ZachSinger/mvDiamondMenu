@@ -119,8 +119,6 @@ function Scene_DMenu() {
     this.initialize.apply(this, arguments)
 }
 
-Scene_DMenu.prototype = Object.create(Scene_MenuBase.prototype)
-Scene_DMenu.prototype.constructor = Scene_DMenu;
 
 /**
  * ---------------------------------------------------------------------------------------------------------------------------------
@@ -129,7 +127,6 @@ Scene_DMenu.prototype.constructor = Scene_DMenu;
  */
 
 Scene_DMenu.prototype.initialize = function () {
-    Scene_MenuBase.prototype.initialize.call(this)
     this.setProps()
     this.loadDiamondWindows()
 
@@ -184,6 +181,7 @@ Scene_DMenu.prototype.initializeOptions = function () {
     this.initializeDirections()
     this.initializeOptionValues()
     this.setOptions()
+    this.validateCallbacks()
 }
 
 Scene_DMenu.prototype.initializeDirections = function () {
@@ -264,6 +262,20 @@ Scene_DMenu.prototype.setTwoOptions = function () {
     this.select_right = DMenuManager.parseFunction(options[1].callback)
 }
 
+Scene_DMenu.prototype.validateCallbacks = function () {
+    if (!typeof this.select_left == 'function')
+        this.select_left = () => { }
+
+    if (!typeof this.select_right == 'function')
+        this.select_left = () => { }
+
+    if (!typeof this.select_up == 'function')
+        this.select_left = () => { }
+
+    if (!typeof this.select_down == 'function')
+        this.select_left = () => { }
+}
+
 /** Initialization
  * ----Diamonds
  */
@@ -303,10 +315,10 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
     this.createDescText()
     this.initializeTextPositions()
     // this.initializeDescPositions()
-    this.stage.addChild(this.diamondContainer)
+    // this.stage.addChild(this.diamondContainer)
     // this.stage.addChild(this.lines)
     // this.stage.addChild(this.titles)
-    this.addChild(this.stage)
+    SceneManager._scene.addChild(this.diamondContainer)
     return true;
 }
 
@@ -352,7 +364,6 @@ Scene_DMenu.prototype.createDiamondText = function () {
     for (let i = 0; i < length; i++) {
         if (list[i] >= 0) {
             let diamond = this.getDiamond(list[i])
-            console.log(list[i])
             let txt = this.createTextObject(this['option' + (i + 1) + 'Settings'].diamondText, 'left')
             diamond.addChild(txt)
             txt.pivot.set(txt.width / 2, txt.height / 2)
@@ -450,23 +461,22 @@ Scene_DMenu.prototype.createDescText = function () {
     this.descriptions = descriptions;
 }
 
-Scene_DMenu.prototype.initializeTextPositions = function(){
+Scene_DMenu.prototype.initializeTextPositions = function () {
     let options = this.getOptions();
     let length = options.length;
 
-    for(let i = 0; i < length; i++){
-        if(options[i] >= 0){
+    for (let i = 0; i < length; i++) {
+        if (options[i] >= 0) {
             let diamond = this.getDiamond(options[i])
             diamond.dTitle.y -= Graphics.height * .025;
-            if(!diamond.isLeftLine){
-                console.log('is not left line')
+            if (!diamond.isLeftLine) {
                 diamond.dTitle.x -= diamond.dTitle.met.width
                 diamond.dDesc.x -= diamond.dDesc.met.width
             }
         }
     }
 
-    
+
 }
 
 
@@ -476,7 +486,7 @@ Scene_DMenu.prototype.initializeTextPositions = function(){
  * ---------------------------------------------------------------------------------------------------------------------------------
  */
 
-Scene_DMenu.prototype.getOptions = function(){
+Scene_DMenu.prototype.getOptions = function () {
     return [
         this.option1,
         this.option2,
@@ -505,7 +515,8 @@ Scene_DMenu.prototype.createTextObject = function (txt, align) {
     return text;
 }
 
-Scene_DMenu.prototype.createPopoutLine = function (diamond, left) {
+Scene_DMenu.prototype.createPopoutLine = function (diamond, left, perc) {
+    perc = perc || 1
     left = left ? -1 : 1
     let line = new PIXI.Graphics;
     let style = this.popoutLineStyle;
@@ -516,8 +527,8 @@ Scene_DMenu.prototype.createPopoutLine = function (diamond, left) {
     let bX = aX + (style.xRun * Graphics.width) * left
     let bY = aY;
 
-    diamond.addChild(line)
     diamond.popoutLine = line
+    diamond.addChild(line)
     diamond.bX = bX
     diamond.bY = bY
     diamond.isLeftLine = left == -1 ? true : false;
@@ -525,7 +536,7 @@ Scene_DMenu.prototype.createPopoutLine = function (diamond, left) {
     line.lineStyle(style.brushThickness, color, 1)
     line.moveTo(widthMod, widthMod)
     line.lineTo(aX, aY)
-    line.lineTo(bX, bY)
+    line.lineTo(bX * perc, bY)
 
     line.alpha = 0;
 }
@@ -542,7 +553,6 @@ Scene_DMenu.prototype.update = function () {
     if (!this._diamondsInitialized) {
         return this._diamondsInitialized = this.diamondsLoaded()
     }
-    Scene_MenuBase.prototype.update.call(this)
     this.dMenuUpdate()
 }
 
@@ -561,7 +571,6 @@ Scene_DMenu.prototype.checkSEPlay = function () {
 }
 
 Scene_DMenu.prototype.playSound = function (name) {
-    console.log('play sound')
     let options = {
         name: name,
         pitch: 50,
@@ -585,8 +594,10 @@ Scene_DMenu.prototype.checkPositions = function () {
             if (!this.triggered) {
                 this.playSE = 'release'
                 this.triggered = true;
-                console.log('hit active position')
+                let dir = this[diamond.controlId];
+                DMenuManager.selected = this['option' + (dir + 1) + 'Settings'].name
                 this.diamondContainer.swapChildren(diamond, list[3])
+                diamond.popoutLine.destroy(true)
                 standardPlayer.sp_Animations.createAnimation(diamond)
                     .action(0)
                     .moveXY(this.activePosition[0], this.activePosition[1], 20, 0)
@@ -594,7 +605,7 @@ Scene_DMenu.prototype.checkPositions = function () {
                     .setScale(1.5, 1.5, 20, 0)
                     .setAlpha(0, 20, 0)
                     .prepareStep()
-                    .setMasterCb(() => { this[`select_${diamond.controlId}`]() })
+                    .setMasterCb(() => { this[`select_${diamond.controlId}`](); this.removeScene() })
                     .activate()
                 this.fadeNonSelected(diamond)
                 continue
@@ -610,7 +621,7 @@ Scene_DMenu.prototype.checkPositions = function () {
                     diamond.sePlayed = true
 
                 } else {
-                    
+
                     // diamond.popoutLine.visible = true;
                 }
 
@@ -619,6 +630,12 @@ Scene_DMenu.prototype.checkPositions = function () {
                 diamond.sePlayed = false;
             }
     }
+}
+
+Scene_DMenu.prototype.removeScene = function () {
+    this.removePIXIGraphics();
+    DMenuManager.popScene()
+    DMenuManager.revertUpdate()
 }
 
 Scene_DMenu.prototype.fadeNonSelected = function (diamond) {
@@ -635,6 +652,15 @@ Scene_DMenu.prototype.fadeNonSelected = function (diamond) {
             .prepareStep()
             .activate()
     }
+}
+
+Scene_DMenu.prototype.removePIXIGraphics = function () {
+    let scn = SceneManager._scene
+    scn.removeChild(this.diamondContainer)
+    this.diamondContainer.destroy(true);
+    this.diamondContainer = undefined;
+    this.stage.destroy(true);
+    this.stage = undefined;
 }
 
 
@@ -670,14 +696,13 @@ Scene_DMenu.prototype.returnDiamond = function (diamond) {
 
 
 Scene_DMenu.prototype.checkInput = function () {
-    if (Input.isTriggered('cancel')) {
-        // this.removePIXIGraphics()
-        // DMenuManager.popScene()
+    if (Input.isTriggered('tempcancel')) {
+        return this.removeScene()
     }
 
     DMenuControl.pollControls()
 
-    if (Input.isTriggered('ok') && DMenuControl.selectedOptions.length == 1) {
+    if (Input.isTriggered('tempok') && DMenuControl.selectedOptions.length == 1) {
         this.getDiamond(this[DMenuControl.selectedOptions[0]]).isActive = true;
     }
 
@@ -696,10 +721,13 @@ function DMenuManager() {
 DMenuManager.sceneSettings = [];
 
 DMenuManager.getSettings = function (type, name) {
+    console.log(type, name)
     let list = type == 'menu' ?
         standardPlayer.sp_diamondMenu.parameters.menus :
         standardPlayer.sp_diamondMenu.parameters.options;
     let length = list.length;
+    console.log(name)
+    console.log(typeof name)
     name = name.toLocaleLowerCase()
 
     for (let i = 0; i < length; i++) {
@@ -712,7 +740,7 @@ DMenuManager.getSettings = function (type, name) {
 }
 
 DMenuManager.loadMenu = function (name) {
-    let menu = this.getSettings('menu', name)
+    let menu = Object.assign({}, this.getSettings('menu', name))
     let options = [];
     if (menu) {
         menu.options.forEach(option => {
@@ -721,7 +749,13 @@ DMenuManager.loadMenu = function (name) {
 
         menu.options = options;
         this.sceneSettings.push(menu)
-        SceneManager.push(Scene_DMenu)
+        this.scene = new Scene_DMenu()
+        this.alias_SceneUpdate = SceneManager._scene.update;
+        SceneManager._scene.update = function () {
+            DMenuManager.alias_SceneUpdate.call(this)
+            DMenuManager.scene.update.call(DMenuManager.scene)
+        }
+        standardPlayer.sp_Core.toggleInput(false)
     }
 }
 
@@ -743,7 +777,15 @@ DMenuManager.parseFunction = function (path) {
 
 DMenuManager.popScene = function () {
     this.sceneSettings.pop()
-    SceneManager.pop()
+
+}
+
+DMenuManager.revertUpdate = function () {
+    let scn = SceneManager._scene;
+
+    scn.update = this.alias_SceneUpdate
+    standardPlayer.sp_Core.toggleInput(true)
+    Input._currentState.ok = true
 }
 
 
@@ -766,10 +808,10 @@ DMenuControl.pollControls = function () {
 DMenuControl.pollDirections = function () {
     let list = Object.keys(this.controls)
     let length = 4;
-    let scn = SceneManager._scene;
+    let scn = DMenuManager.scene
 
     for (let i = 0; i < length; i++) {
-        if (Input.isPressed(list[i]) && scn['option' + (i + 1)] >= 0) {
+        if (Input.isPressed('temp' + list[i]) && scn['option' + (i + 1)] >= 0) {
             this.controls[list[i]] = true;
         } else {
             this.controls[list[i]] = false;
@@ -808,3 +850,29 @@ DMenuCB.attack = function () { console.log('attack') }
 DMenuCB.defend = function () { console.log('defend') }
 DMenuCB.insult = function () { console.log('insult') }
 DMenuCB.blink = function () { console.log('blink') }
+
+Window_Base.prototype.convertEscapeCharacters = function (text) {
+    /* eslint no-control-regex: 0 */
+    text = text.replace(/\\/g, "\x1b");
+    text = text.replace(/\x1b\x1b/g, "\\");
+    text = text.replace(/\x1bV\[(\d+)\]/gi, (_, p1) =>
+        $gameVariables.value(parseInt(p1))
+    );
+    text = text.replace(/\x1bV\[(\d+)\]/gi, (_, p1) =>
+        $gameVariables.value(parseInt(p1))
+    );
+    text = text.replace(/\x1bN\[(\d+)\]/gi, (_, p1) =>
+        this.actorName(parseInt(p1))
+    );
+    text = text.replace(/\x1bP\[(\d+)\]/gi, (_, p1) =>
+        this.partyMemberName(parseInt(p1))
+    );
+    text = text.replace(/\x1bZ\[(\D+)\]/gi, (_, p1) => {
+        DMenuManager.loadMenu(p1)
+        return ""
+    }
+
+    );
+    text = text.replace(/\x1bG/gi, TextManager.currencyUnit);
+    return text;
+}

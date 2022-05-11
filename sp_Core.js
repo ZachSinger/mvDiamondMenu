@@ -241,7 +241,7 @@ standardPlayer.sp_Core.toggleAction = function (action, enable) {
 
 standardPlayer.sp_Core.toggleInput = function (enable) {
     let vals = ["ok", "cancel", "shift", "control", "pageup", "pagedown", "up", "down", "right", "left", "tab", "escape"];
-
+    Input.clear()
     this.toggleKeys(vals, enable);
 }
 
