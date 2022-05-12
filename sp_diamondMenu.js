@@ -28,11 +28,6 @@
  * @text Callback
  * @desc Function name or path to call when User hits 'OK' with this option highlighted
  * 
- * @param img
- * @type file
- * @dir img/
- * @text Image
- * @desc Filepath to image to show inside of diamond for this option. Can be left blank.
  * 
  * @param title
  * @type text
@@ -63,6 +58,13 @@
  * @text Diamond Graphic
  * @desc Filepath for Diamond Graphic to use for this menu
  * 
+ * @param yPosition
+ * @type number
+ * @decimals 2
+ * @text Relative Height Position
+ * @desc Factor to multiply by Screen Height to get y position. .5 is centered
+ * @default .5
+ * 
  * @param animFrames
  * @type number
  * @text Animation Frames
@@ -82,6 +84,7 @@
  * 
  * @param color
  * @type select
+ * @text Color
  * @option white
  * @option black
  * @default white
@@ -139,6 +142,7 @@ Scene_DMenu.prototype.initialize = function () {
 Scene_DMenu.prototype.setProps = function () {
     this.settings = DMenuManager.menu();
     this.index = -1;
+    this.yPosition = this.settings.yPosition;
     this.diamondImagePath = `img/${this.settings.diamondGraphic}.png`
     this.popoutLineStyle = { brushThickness: 2, xRise: .03, xRun: .15, yRise: -0.02 }
     this.setAnimationValues()
@@ -308,16 +312,11 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
     this.initializeDiamondPositions()
     this.cacheInitialPositions()
     this.setMoveInterval()
-    // this.setCallbackFunctions()
     this.createDiamondText()
     this.drawPopoutLines()
     this.createTitleText()
     this.createDescText()
     this.initializeTextPositions()
-    // this.initializeDescPositions()
-    // this.stage.addChild(this.diamondContainer)
-    // this.stage.addChild(this.lines)
-    // this.stage.addChild(this.titles)
     SceneManager._scene.addChild(this.diamondContainer)
     return true;
 }
@@ -339,7 +338,7 @@ Scene_DMenu.prototype.initializeDiamondPositions = function () {
     diamonds[this.left].controlId = "left"
 
 
-    this.diamondContainer.position.set(Graphics.width * .5, Graphics.height * .5)
+    this.diamondContainer.position.set(Graphics.width * .5, Graphics.height * this.yPosition)
 }
 
 Scene_DMenu.prototype.cacheInitialPositions = function () {
@@ -696,13 +695,13 @@ Scene_DMenu.prototype.returnDiamond = function (diamond) {
 
 
 Scene_DMenu.prototype.checkInput = function () {
-    if (Input.isTriggered('tempcancel')) {
+    if (Input.isTriggered('cancel')) {
         return this.removeScene()
     }
 
     DMenuControl.pollControls()
 
-    if (Input.isTriggered('tempok') && DMenuControl.selectedOptions.length == 1) {
+    if (Input.isTriggered('ok') && DMenuControl.selectedOptions.length == 1) {
         this.getDiamond(this[DMenuControl.selectedOptions[0]]).isActive = true;
     }
 
@@ -755,7 +754,8 @@ DMenuManager.loadMenu = function (name) {
             DMenuManager.alias_SceneUpdate.call(this)
             DMenuManager.scene.update.call(DMenuManager.scene)
         }
-        standardPlayer.sp_Core.toggleInput(false)
+        // standardPlayer.sp_Core.toggleInput(false)
+        this.active = true;
     }
 }
 
@@ -769,6 +769,7 @@ DMenuManager.parseFunction = function (path) {
     let obj = path.length > 1 ? window[path.shift()] : window;
     let length = path.length;
 
+    console.log(obj, path)
     for (let i = 0; i < length; i++) {
         obj = obj[path[i]];
     };
@@ -784,8 +785,18 @@ DMenuManager.revertUpdate = function () {
     let scn = SceneManager._scene;
 
     scn.update = this.alias_SceneUpdate
-    standardPlayer.sp_Core.toggleInput(true)
-    Input._currentState.ok = true
+    // standardPlayer.sp_Core.toggleInput(true)
+    this.active = false;
+    this.isClosing = true;
+    this._shouldProceed = true;
+}
+
+DMenuManager.proceed = function(){
+    if(this._shouldProceed){
+        this._shouldProceed = false;
+        return true;
+    }
+    return false;
 }
 
 
@@ -811,7 +822,7 @@ DMenuControl.pollDirections = function () {
     let scn = DMenuManager.scene
 
     for (let i = 0; i < length; i++) {
-        if (Input.isPressed('temp' + list[i]) && scn['option' + (i + 1)] >= 0) {
+        if (Input.isPressed(list[i]) && scn['option' + (i + 1)] >= 0) {
             this.controls[list[i]] = true;
         } else {
             this.controls[list[i]] = false;
@@ -876,3 +887,30 @@ Window_Base.prototype.convertEscapeCharacters = function (text) {
     text = text.replace(/\x1bG/gi, TextManager.currencyUnit);
     return text;
 }
+
+Window_Message.prototype.updateInput = function() {
+    if (this.isAnySubWindowActive()) {
+        return true;
+    }
+    if (this.pause) {
+        if (this.isTriggered() && !DMenuManager.active) {
+            console.log('in here')
+            Input.update();
+            this.pause = false;
+            if (!this._textState) {
+                this.terminateMessage();
+            }
+        }
+        return true;
+    }
+    return false;
+};
+
+Window_Message.prototype.isTriggered = function() {
+    return (
+        Input.isRepeated("ok") ||
+        Input.isRepeated("cancel") ||
+        TouchInput.isRepeated() || 
+        DMenuManager.proceed()
+    );
+};
