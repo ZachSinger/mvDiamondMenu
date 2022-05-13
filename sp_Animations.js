@@ -162,8 +162,8 @@ class spAnimation {
             'alpha': target.alpha,
             'rotation': target.rotation
         }
-        props.scale.x = target.scale._x;
-        props.scale.y = target.scale._y;
+        props.scale.x = target.scale && target.scale._x ? target.scale._x : 1;
+        props.scale.y = target.scale && target.scale._y ? target.scale._y : 1;
         return props;
     }
 
@@ -270,7 +270,13 @@ class sp_Action {
         return this.steps[this.index]
     }
 
-    template() {
+    template(prop) {
+        if(prop && typeof this.animation.initialCache[prop] == 'undefined'){
+            console.log(prop + ' not on original cache')
+            this.animation.initialCache[prop] = this.target()[prop]
+            this.animation.currentPosition[prop] = this.target()[prop]
+            this.stepTemplate[this.index][prop] = this.target()[prop];
+        }
         return this.stepTemplate[this.index]
     }
 
@@ -366,11 +372,11 @@ class sp_Action {
 
 
     setCustomProp(prop, value, dur, pad) {
-        let step = this.template();
-
+        let step = this.template(prop);
+        console.log(JSON.parse(JSON.stringify(step)))
         step[prop] = value;
 
-        this.animation.initialCache[prop] = this.target()[prop]
+        // this.animation.initialCache[prop] = this.target()[prop]
 
         this.dur[this.index] = dur;
         this.pad[this.index] = pad;
@@ -643,6 +649,7 @@ class sp_Action {
 
     isCompletedStep() {
         if (this.tick + 1 >= this.currentDur()) {
+            console.log('is passed condition')
             if (this.checkStepRepeat())
                 return false;
             this.index++;
@@ -657,16 +664,20 @@ class sp_Action {
 
     updateCache() {
         let target = this.target();
-        let props = {
-            'x': target.x,
-            'y': target.y,
-            'width': target.width,
-            'height': target.height,
-            'scale': target.scale,
-            'alpha': target.alpha
-        }
+        // let props = {
+        //     'x': target.x,
+        //     'y': target.y,
+        //     'width': target.width,
+        //     'height': target.height,
+        //     'scale': target.scale,
+        //     'alpha': target.alpha
+        // }
 
-        this.animation.currentPosition = props;
+        let keys = Object.keys(target)
+        let currentPosition = {}
+        keys.forEach(key => currentPosition[key] = target[key])
+
+        this.animation.currentPosition = currentPosition;
     }
 
     updateScale(props, index) {
@@ -807,3 +818,14 @@ function setListeners(target){
 let lastFire = 0;
 
 
+let tFunc = ()=>{
+    let d = DMenuManager.scene.diamondContainer.children[0]
+    let f= new PIXI.filters.ColorMatrixFilter
+    d.filters = [f]
+    standardPlayer.sp_Animations.createAnimation(f)
+        .action(0)
+        .setCustomProp('resolution', .01, 60, 0)
+        .then()
+        .setCustomProp('resolution', 1, 60, 0)
+        .finalize()
+}
