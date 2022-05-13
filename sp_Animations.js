@@ -14,6 +14,7 @@ var standardPlayer = standardPlayer || { params: {} };
 standardPlayer.sp_Animations = standardPlayer.sp_Animations || { animations: [], active: true };
 
 standardPlayer.sp_Animations.Parameters = PluginManager.parameters('standardPlayer.sp_Animations');
+standardPlayer.sp_Animations.useCustom = {};
 
 standardPlayer.sp_Core.addBaseUpdate(() => {
     requestAnimationFrame(() => {
@@ -273,11 +274,28 @@ class sp_Action {
     template(prop) {
         if(prop && typeof this.animation.initialCache[prop] == 'undefined'){
             console.log(prop + ' not on original cache')
+            
+        }
+        return this.stepTemplate[this.index]
+    }
+
+    checkWrapperRequirement(prop, initValue){
+        let target = this.target();
+        
+        if(typeof target[prop] == 'function'){
+            console.log('prop is function')
+            Object.defineProperty(target, `_${prop}`, {
+                set: (x)=> {target[prop](x)}
+            })
+            this.stepTemplate[this.index][`_${prop}`] = initValue
+            this.animation.initialCache[`_${prop}`] = initValue
+            this.animation.currentPosition[`_${prop}`] = initValue
+            this.animation.initialCache[prop] = standardPlayer.sp_Animations.useCustom;
+        } else {
             this.animation.initialCache[prop] = this.target()[prop]
             this.animation.currentPosition[prop] = this.target()[prop]
             this.stepTemplate[this.index][prop] = this.target()[prop];
         }
-        return this.stepTemplate[this.index]
     }
 
     currentDur() {
@@ -296,7 +314,7 @@ class sp_Action {
         step.y = y;
 
         this.dur[this.index] = dur;
-        this.pad[this.index] = pad;
+        this.pad[this.index] = pad || 0;
         return this;
     }
 
@@ -307,7 +325,7 @@ class sp_Action {
         step.y = this.getLastPropValue('y') + y;
 
         this.dur[this.index] = dur;
-        this.pad[this.index] = pad;
+        this.pad[this.index] = pad || 0;
         return this;
     }
 
@@ -318,7 +336,7 @@ class sp_Action {
 
 
         this.dur[this.index] = dur;
-        this.pad[this.index] = pad;
+        this.pad[this.index] = pad || 0;
         return this;
     }
 
@@ -328,7 +346,7 @@ class sp_Action {
         step.alpha = value
 
         this.dur[this.index] = dur;
-        this.pad[this.index] = pad;
+        this.pad[this.index] = pad || 0;
         return this;
     }
 
@@ -344,7 +362,7 @@ class sp_Action {
         step.width = value
 
         this.dur[this.index] = dur;
-        this.pad[this.index] = pad;
+        this.pad[this.index] = pad || 0;
         return this;
     }
 
@@ -354,7 +372,7 @@ class sp_Action {
         step.height = value
 
         this.dur[this.index] = dur;
-        this.pad[this.index] = pad;
+        this.pad[this.index] = pad || 0;
         return this;
     }
 
@@ -366,20 +384,26 @@ class sp_Action {
         step.scale.y = y;
 
         this.dur[this.index] = dur;
-        this.pad[this.index] = pad;
+        this.pad[this.index] = pad || 0;
+        return this;
+    }
+
+    addCustomProp(prop, initValue) {
+        this.checkWrapperRequirement(prop, initValue)
+
         return this;
     }
 
 
     setCustomProp(prop, value, dur, pad) {
-        let step = this.template(prop);
-        console.log(JSON.parse(JSON.stringify(step)))
+        let step = this.template(prop, value);
+        prop = this.animation.initialCache[prop] == standardPlayer.sp_Animations.useCustom ? `_${prop}` : prop
         step[prop] = value;
 
         // this.animation.initialCache[prop] = this.target()[prop]
 
         this.dur[this.index] = dur;
-        this.pad[this.index] = pad;
+        this.pad[this.index] = pad || 0;
         return this;
     }
 
@@ -664,15 +688,6 @@ class sp_Action {
 
     updateCache() {
         let target = this.target();
-        // let props = {
-        //     'x': target.x,
-        //     'y': target.y,
-        //     'width': target.width,
-        //     'height': target.height,
-        //     'scale': target.scale,
-        //     'alpha': target.alpha
-        // }
-
         let keys = Object.keys(target)
         let currentPosition = {}
         keys.forEach(key => currentPosition[key] = target[key])
@@ -711,121 +726,21 @@ class sp_Action {
 }
 
 
-/* ===================================================================================================
-        Test Area
- ===================================================================================================*/
-
-
-function testScript() {
-    // window.grph = new PIXI.Graphics(); grph.beginFill(0xFFFFFF); grph.drawRect(0, 0, 100, 100);
-    // SceneManager._scene.addChild(grph)
-    // let result = standardPlayer.sp_Animations.reserveAnimation('pictures/Actor1_1', (anim) => {
-       let anim = standardPlayer.sp_Animations.createTemplate();
-
-        anim
-            .action(0)
-            .moveXY(Graphics.width * .4, Graphics.height * .5, 100, 0)
-            .setScale(1.4, 2.1, 100, 0)
-            .then()
-            // .setRotation(10, 100, 0)
-            // .then()
-            .setWait(100)
-            .moveXYRel(100, 100, 100, 0)
-            .setScale(.8, 1.1, 100, 0)
-            .then()
-            .moveXYRel(200, 50, 30, 0)
-            .setScale(2.4, 3.1, 30, 0)
-            .then()
-            // .setRotation(14, 100, 0)
-            .moveXYRel(100, -50, 100, 0)
-            .setScale(4.4, 3.5, 100, 0)
-            .then()
-            .resetPosition(100, 0)
-
-
-        anim
-            .action(1)
-            .setRotation(15, 100, 0)
-            .then()
-            .setRotation(-15, 100, 0)
-            .prepareStep()
-
-
-        anim.activate();
-    
-    let spr = standardPlayer.sp_ImageCache.loadSprite('pictures/Actor1_1', ()=>{
-        SceneManager._scene.addChild(spr.retrieve())
-        let realAnim = anim.create(spr)
-        console.log(realAnim.target())
-        realAnim.activate()
-            
-        
-    })
-    return anim;
-}
-
-
-function setShip(){
-    let cb = ()=>{
-        stub.retrieve().position.set(Graphics.width / 2, Graphics.height - stub.retrieve().height)
-    }
-    let stub = standardPlayer.sp_ImageCache.loadSprite('pictures/playerShip', cb)
-
-    SceneManager._scene.addChild(stub.retrieve())
-
-    return stub
-}
-
-function setListeners(target){
-    standardPlayer.sp_Core.allowPlayerMovement = false;
-    let tg = target.retrieve();
-
-    let updateFire = ()=>{
-        if(lastFire > 0){
-            lastFire--;
-        } 
-        
-    }
-    let leftCb = ()=>{
-        if(Input.isPressed('left')){
-            tg.x -= 12
-        }
-    }
-
-    
-    let rightCb = ()=>{
-        if(Input.isPressed('right')){
-            tg.x += 12
-        }
-    }
-
-    let okCb = ()=>{
-        if(Input.isPressed('ok')){
-            if(lastFire == 0){
-                console.log('firing')
-                pewpew(tg.x + tg.width / 2, tg.y)
-                lastFire = 5
-            }
-        }
-    }
-
-    standardPlayer.sp_Core.addBaseUpdate(leftCb)
-    standardPlayer.sp_Core.addBaseUpdate(rightCb)
-    standardPlayer.sp_Core.addBaseUpdate(okCb)
-    standardPlayer.sp_Core.addBaseUpdate(updateFire)
-}
-
-let lastFire = 0;
-
-
 let tFunc = ()=>{
     let d = DMenuManager.scene.diamondContainer.children[0]
     let f= new PIXI.filters.ColorMatrixFilter
     d.filters = [f]
     standardPlayer.sp_Animations.createAnimation(f)
         .action(0)
-        .setCustomProp('resolution', .01, 60, 0)
+        .addCustomProp('brightness', 1)
+        .setCustomProp('brightness', 10, 9)
         .then()
-        .setCustomProp('resolution', 1, 60, 0)
+        .setCustomProp('brightness', .5, 9)
+        .then()
+        .setCustomProp('brightness', 10, 9)
+        .then()
+        .setCustomProp('brightness', 1, 9)
         .finalize()
+
+    window.fil = f
 }
