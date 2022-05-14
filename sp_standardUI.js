@@ -58,6 +58,16 @@ sp_UI.prototype.onPreloaded = function(){
     throw new Error('Classes extending sp_UI that set the ._filepaths property in the initalize method should have their own .onPreloaded method')
 }
 
+sp_UI.prototype.imageCache = function(){
+    return standardPlayer.sp_ImageCache
+}
+
+/**
+ * SET SP_UI PROTOTYPE TO BUILD THE BACKGROUND OF AN ELEMENT, ACCORDING TO THE DIMENSIONS IF THEY ARE SPECIFIED
+ * USE A SHARED FILTER THAT IS AVAIALABLE  TO ALL CHILD CLASSES
+ * SET SP_UI TO BE INTERACTIVE IF DESIRED (OR CREATE SEPARATE INTERACTABLE CLASS<<INTERACTIVE AS FAR AS TOUCHINPUT>>)
+ * 
+ */
 
 
 function sp_CheckBox() {
@@ -66,12 +76,30 @@ function sp_CheckBox() {
 
 sp_CheckBox.prototype = sp_UIFactory.uiProto()
 
+// sp_CheckBox.prototype.initialize = function () {
+//     this.setBaseProps()
+//     this.createCheckBoxGraphic()    
+// }
+
 sp_CheckBox.prototype.initialize = function () {
     console.log('calling correct initialize')
-    this._filepaths = ['characters/Actor1']
+    this._filepaths = ['characters/Actor1', 'characters/Actor1', 'characters/Actor3', 'characters/Actor2', 'characters/$BigMonster1', 'characters/!SF_Door1', 'characters/!SF_Door2']
 }
 
 sp_CheckBox.prototype.onPreloaded = function(){
     console.log('finished preloading')
 }
+
+
+sp_CheckBox.prototype.setBaseProps = function(){
+    
+}
+
+sp_CheckBox.prototype.createCheckBoxGraphic = function(){
+    let border = this.imageCache().createGraphic()
+    
+    checkBoxStub.lineStyle(2, 0xFFFFFF, 1)
+    
+}
+
 

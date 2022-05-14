@@ -474,6 +474,9 @@ class CacheStub {
     constructor(id) {
         this.sp_image_cacheId = id
         this.ref = this.retrieve.bind(this)
+        Object.defineProperty(this, 'stub', {
+            get:()=> {return this.retrieve()}
+        })
     }
 
     retrieve() {
