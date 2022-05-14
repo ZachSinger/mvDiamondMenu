@@ -170,11 +170,7 @@ Scene_DMenu.prototype.initializeAudioSettings = function () {
 Scene_DMenu.prototype.createGraphicsContainers = function () {
     this.stage = new PIXI.Container
     this.diamondContainer = new PIXI.Container
-    this.diamondHeadings = [];
-    this.popoutLines = [];
-    this.titles = [];
-    this.descriptions = [];
-
+    this.dataContainer = new PIXI.Container;
 }
 
 /** Initialization
@@ -309,6 +305,8 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
             return false;
     }
 
+    this.stage.addChild(this.diamondContainer)
+    this.stage.addChild(this.dataContainer)
     this.initializeDiamondPositions()
     this.cacheInitialPositions()
     this.setMoveInterval()
@@ -317,7 +315,9 @@ Scene_DMenu.prototype.diamondsLoaded = function () {
     this.createTitleText()
     this.createDescText()
     this.initializeTextPositions()
-    SceneManager._scene.addChild(this.diamondContainer)
+    this.dataContainer.position.set(this.diamondContainer.x, this.diamondContainer.y)
+    // this.dataContainer.pivot.set(this.dataContainer.width / 2, this.dataContainer.height / 2)
+    SceneManager._scene.addChild(this.stage)
     return true;
 }
 
@@ -359,12 +359,13 @@ Scene_DMenu.prototype.createDiamondText = function () {
         this.option4
     ]
     let length = 4;
+    let cont = this.dataContainer;
 
     for (let i = 0; i < length; i++) {
         if (list[i] >= 0) {
             let diamond = this.getDiamond(list[i])
             let txt = this.createTextObject(this['option' + (i + 1) + 'Settings'].diamondText, 'left')
-            diamond.addChild(txt)
+            cont.addChild(txt)
             txt.pivot.set(txt.width / 2, txt.height / 2)
             diamond.optionText = txt;
 
@@ -468,6 +469,8 @@ Scene_DMenu.prototype.initializeTextPositions = function () {
         if (options[i] >= 0) {
             let diamond = this.getDiamond(options[i])
             diamond.dTitle.y -= Graphics.height * .025;
+            diamond.optionText.position.set(diamond.x, diamond.y)
+            diamond.popoutLine.position.set(diamond.bX, diamond.bY)
             if (!diamond.isLeftLine) {
                 diamond.dTitle.x -= diamond.dTitle.met.width
                 diamond.dDesc.x -= diamond.dDesc.met.width
@@ -525,9 +528,10 @@ Scene_DMenu.prototype.createPopoutLine = function (diamond, left, perc) {
     let aY = widthMod + (style.yRise * Graphics.height) * -left
     let bX = aX + (style.xRun * Graphics.width) * left
     let bY = aY;
+    let cont = this.dataContainer;
 
     diamond.popoutLine = line
-    diamond.addChild(line)
+    cont.addChild(line)
     diamond.bX = bX
     diamond.bY = bY
     diamond.isLeftLine = left == -1 ? true : false;
