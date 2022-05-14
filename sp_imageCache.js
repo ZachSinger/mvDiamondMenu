@@ -20,7 +20,9 @@ standardPlayer.sp_ImageCache = standardPlayer.sp_ImageCache || {
     batchCbs: {},
     batchArgs:[],
     isLoaded: false,
-    active: true
+    active: true,
+    pixiVersion: Number((PIXI.VERSION.split(''))[0]),
+    loadType: this.pixiVersion > 4 ? 'valid' : 'hasLoaded'
 };
 
 standardPlayer.sp_Core.addBaseUpdate(() => {
@@ -33,7 +35,7 @@ standardPlayer.sp_ImageCache.Parameters = PluginManager.parameters('standardPlay
 
 standardPlayer.sp_ImageCache.loadSharedSprite = function (url, cb, args) {
     let id = `sprite:${this.generateUUID()}`
-    let stub = new spriteStub(id);
+    let stub = new SpriteStub(id);
     let spr = new PIXI.Sprite.from(`img/${url}.png`);
 
     stub.setName(url)
@@ -58,7 +60,7 @@ standardPlayer.sp_ImageCache.loadSharedSprite = function (url, cb, args) {
 
 standardPlayer.sp_ImageCache.loadSprite = function(url, cb, args){
     let id = `sprite:${this.generateUUID()}`
-    let stub = new spriteStub(id);
+    let stub = new SpriteStub(id);
     let spr = new PIXI.Sprite.from(this.createTexture(`img/${url}.png`));
 
     stub.setName(url)
@@ -82,7 +84,7 @@ standardPlayer.sp_ImageCache.loadSprite = function(url, cb, args){
 
 standardPlayer.sp_ImageCache.loadTilingSprite = function(url, cb, args){
     let id = `sprite:${this.generateUUID()}`
-    let stub = new tilingSpriteStub(id);
+    let stub = new TilingSpriteStub(id);
     let txt = this.createTexture(`img/${url}.png`);
     let spr = new PIXI.TilingSprite(txt);
     let aliasCB = ()=>{
@@ -202,7 +204,7 @@ standardPlayer.sp_ImageCache.createTexture = function(url){
 standardPlayer.sp_ImageCache.createContainer = function(particle, max, options, batchSize, autoResize){
     let container = particle ? new PIXI.ParticleContainer(max, options, batchSize, autoResize) : new PIXI.Container;
     let id = `container:${this.generateUUID()}`
-    let stub = new containerStub(id)
+    let stub = new ContainerStub(id)
 
     container.sp_image_cacheId = id;
     this.containers.push(container)
@@ -212,7 +214,7 @@ standardPlayer.sp_ImageCache.createContainer = function(particle, max, options, 
 standardPlayer.sp_ImageCache.createGraphic = function(){
     let graphic = new PIXI.Graphics;
     let id = `graphic:${this.generateUUID()}`
-    let stub = new graphicStub(id)
+    let stub = new GraphicStub(id)
 
     graphic.sp_image_cacheId = id;
     this.graphics.push(graphic)
@@ -222,7 +224,7 @@ standardPlayer.sp_ImageCache.createGraphic = function(){
 standardPlayer.sp_ImageCache.createText = function(content){
     let text = new PIXI.Text(content);
     let id = `text:${this.generateUUID()}`
-    let stub = new textStub(id)
+    let stub = new TextStub(id)
 
     text.sp_image_cacheId = id;
     this.text.push(text)
@@ -403,7 +405,7 @@ standardPlayer.sp_ImageCache.allSpritesLoaded = function(){
             if(current.sp_image_cache_batch){
                     batches[current.sp_image_cache_batch] = true;
                 }
-            if(current.texture && current.texture.baseTexture && current.texture.baseTexture.valid){
+            if(current.texture && current.texture.baseTexture && current.texture.baseTexture[this.loadType]){
                 current.sp_image_loaded = true;
                 current.onCacheLoad(current.onCacheArgs);
             } else {
