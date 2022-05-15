@@ -48,12 +48,12 @@ sp_UI.prototype.initialize = function () {
 
 sp_UI.prototype.constructor = sp_UI.prototype.build;
 
-sp_UI.prototype.build = function () {
+sp_UI.prototype.build = function (args) {
     this.setProps()
     this.setDimensions()
     this.createBackground()
     this.createTextContainer()
-    this.initialize()
+    this.initialize(...args)
     this.preload()
     this.setInteractive()
 }
@@ -161,16 +161,16 @@ sp_UI.prototype.isPressed = function () {
  */
 
 
-function sp_CheckBox() {
-    this.build(true)
+function sp_CheckBox(...args) {
+    this.build(args)
 }
 
 sp_CheckBox.prototype = sp_UIFactory.uiProto()
 
 
 sp_CheckBox.prototype.initialize = function (toggled) {
-    this._toggled = !toggled || false;
-    // this.positionText()
+    this._toggled = toggled ? true : false
+    console.log(toggled, this._toggled)
     this.draw()
 }
 

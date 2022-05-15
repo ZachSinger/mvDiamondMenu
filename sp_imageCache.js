@@ -43,6 +43,7 @@ standardPlayer.sp_ImageCache.loadSharedSprite = function (url, cb, args) {
     if(typeof cb == 'undefined')
         cb = ()=>{};
 
+    spr.cacheStub = stub;
     spr.sp_image_cacheId = id;
     spr.onCacheLoad = cb
     spr.onCacheArgs = args;
@@ -68,6 +69,7 @@ standardPlayer.sp_ImageCache.loadSprite = function(url, cb, args){
     if(typeof cb == 'undefined')
         cb = ()=>{};
 
+    spr.cacheStub = stub;
     spr.sp_image_cacheId = id;
     spr.onCacheLoad = cb;
     spr.onCacheArgs = args;
@@ -98,6 +100,7 @@ standardPlayer.sp_ImageCache.loadTilingSprite = function(url, cb, args){
     if(typeof cb == 'undefined')
         cb = ()=>{};
 
+    spr.cacheStub = stub;
     spr.sp_image_cacheId = id;
     spr.onCacheLoad = aliasCB;
     spr.onCacheArgs = args;
@@ -206,6 +209,7 @@ standardPlayer.sp_ImageCache.createContainer = function(particle, max, options, 
     let id = `container:${this.generateUUID()}`
     let stub = new ContainerStub(id)
 
+    container.cacheStub = stub;
     container.sp_image_cacheId = id;
     this.containers.push(container)
     return stub;
@@ -216,6 +220,7 @@ standardPlayer.sp_ImageCache.createGraphic = function(){
     let id = `graphic:${this.generateUUID()}`
     let stub = new GraphicStub(id)
 
+    graphic.cacheStub = stub;
     graphic.sp_image_cacheId = id;
     this.graphics.push(graphic)
     return stub;
@@ -226,6 +231,7 @@ standardPlayer.sp_ImageCache.createText = function(content, style){
     let id = `text:${this.generateUUID()}`
     let stub = new TextStub(id)
 
+    text.cacheStub = stub
     text.sp_image_cacheId = id;
     this.text.push(text)
     return stub;
@@ -326,6 +332,37 @@ standardPlayer.sp_ImageCache.destroyContainerChildren = function(container){
             sp_image_cacheId: spr.sp_image_cacheId
             })
         spr = undefined;
+    }
+}
+
+standardPlayer.sp_ImageCache.refreshIds = function(type){
+    let list = ""
+
+    switch(type){
+        case 'sprite':
+            list = 'sprites'
+            break;
+        case 'container':
+            list = 'containers'
+            break;
+        case 'graphic':
+            list = 'graphics'
+            break;
+        case 'text':
+            list = 'text'
+            break;
+        default:
+    }
+
+    this.performRefresh(list)
+}
+
+standardPlayer.sp_ImageCache.performRefresh = function(listName){
+    let list = this[listName]
+    let length = list.length;
+
+    for(let i = 0; i < length; i++){
+        list[i].cacheStub.imageCacheIndex = i
     }
 }
 
@@ -481,7 +518,7 @@ class CacheStub {
     }
 
     retrieve() {
-        return standardPlayer.sp_ImageCache.retrieveEntity(this.sp_image_cacheId)
+        return standardPlayer.sp_ImageCache[this._cacheType][this.imageCacheIndex]
     }
 
     setName(name){
@@ -511,10 +548,13 @@ class SpriteStub extends CacheStub {
     constructor(id){
         super(id)
         this._name = "";
+        this._cacheType = 'sprites'
+        this.imageCacheIndex = standardPlayer.sp_ImageCache.sprites.length;
     }
 
     delete(){
         standardPlayer.sp_ImageCache.deleteSprite(this)
+        standardPlayer.sp_ImageCache.refreshIds('sprite')
     }
 }
 
@@ -522,20 +562,27 @@ class TilingSpriteStub extends CacheStub {
     constructor(id){
         super(id)
         this._name = "";
+        this._cacheType = 'sprites'
+        this.imageCacheIndex = standardPlayer.sp_ImageCache.sprites.length;
     }
 
     delete(){
         standardPlayer.sp_ImageCache.deleteSprite(this)
+        standardPlayer.sp_ImageCache.refreshIds('sprite')
     }
 }
 
 class ContainerStub extends CacheStub {
     constructor(id){
         super(id)
+        this._name = ""
+        this._cacheType = 'containers'
+        this.imageCacheIndex = standardPlayer.sp_ImageCache.containers.length;
     }
 
     delete(){
         standardPlayer.sp_ImageCache.deleteContainer(this)
+        standardPlayer.sp_ImageCache.refreshIds('container')
     }
 
     add(stub){
@@ -550,20 +597,26 @@ class ContainerStub extends CacheStub {
 class GraphicStub extends CacheStub {
     constructor(id){
         super(id)
+        this._cacheType = 'graphics'
+        this.imageCacheIndex = standardPlayer.sp_ImageCache.graphics.length;
     }
 
     delete(){
         standardPlayer.sp_ImageCache.deleteGraphic(this)
+        standardPlayer.sp_ImageCache.refreshIds('graphic')
     }
 }
     
 class TextStub extends CacheStub {
     constructor(id){
         super(id)
+        this._cacheType = 'text'
+        this.imageCacheIndex = standardPlayer.sp_ImageCache.text.length;
     }
 
     delete(){
         standardPlayer.sp_ImageCache.deleteText(this)
+        standardPlayer.sp_ImageCache.refreshIds('text')
     }
 
     setText(text, measure){
