@@ -29,6 +29,10 @@ sp_UIFactory.uiProto = function () {
     return Object.create(sp_UI.prototype)
 }
 
+sp_UIFactory.containerProto = function () {
+    return Object.create(sp_UIContainer.prototype)
+}
+
 sp_UIFactory.lineStyle = function () {
     return [2, 0xFFFFFF, 1]
 }
@@ -212,11 +216,15 @@ sp_UI.prototype.mouseCollision = function () {
 }
 
 sp_UI.prototype.isTriggered = function () {
-    return TouchInput.isTriggered() && this.mouseCollision()
+    if(TouchInput.isTriggered()){
+        return this.mouseCollision()
+    }
 }
 
 sp_UI.prototype.isPressed = function () {
-    return TouchInput.isPressed() && this.mouseCollision()
+    if(TouchInput.isPressed()){
+        return this.mouseCollision()
+    }
 }
 
 
@@ -229,27 +237,32 @@ sp_UI.prototype.isPressed = function () {
   \_____\___/|_| |_|\__\__,_|_|_| |_|\___|_|  |___/
 =====================================================================================================*/
 
-function sp_Component(...args){
+function sp_UIContainer(...args){
     this.build(args)
 }
 
-sp_Component.prototype = sp_UIFactory.uiProto()
+sp_UIContainer.prototype = sp_UIFactory.uiProto()
 
-sp_Component.prototype.initialize = function(showBackground){
+sp_UIContainer.prototype.initialize = function(showBackground){
     showBackground = showBackground || false;
     this.initializeMembers()
     this._back.stub.visible = showBackground
 }
 
-sp_Component.prototype.initializeMembers = function(){
+sp_UIContainer.prototype.initializeMembers = function(){
     this.children = [];
 }
 
-sp_Component.prototype.addChild = function(...children){
+sp_UIContainer.prototype.addChild = function(...children){
     let index = -1;
     let length = children.length;
-
+    
     for(let i = 0; i < length; i++){
+        if(children[i].constructor != this._childType){
+            console.log(`Cannot add objects of type ${children[i].constructor} ${this._childType}`)
+            continue
+        }
+
         index = this.children.indexOf(children[i])
         if(index < 0){
             this.children.push(children[i])
@@ -258,7 +271,7 @@ sp_Component.prototype.addChild = function(...children){
     }
 }
 
-sp_Component.prototype.removeChild = function(child){
+sp_UIContainer.prototype.removeChild = function(child){
     let index = this.children.indexOf(child)
 
     if(index >= 0){
@@ -268,7 +281,7 @@ sp_Component.prototype.removeChild = function(child){
     this._stage.removeChild(child._stage)
 }
 
-sp_Component.prototype.updateChildren = function(){
+sp_UIContainer.prototype.updateChildren = function(){
     let list = this.children;
     let length = list.length;
 
@@ -277,12 +290,36 @@ sp_Component.prototype.updateChildren = function(){
     }
 }
 
-sp_Component.prototype.update = function(){
+sp_UIContainer.prototype.update = function(){
     sp_UI.prototype.update.call(this)
     this.updateChildren()
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+function sp_Component(...args){
+    this._childType = sp_UI
+    this.build(args)
+}
+
+sp_Component.prototype = sp_UIFactory.containerProto()
+sp_Component.prototype.constructor = sp_Component
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+function sp_Area(...args){
+    this._childType = sp_Component
+    this.build(args)
+}
+
+sp_Area.prototype = sp_UIFactory.containerProto()
+sp_Area.prototype.constructor = sp_Area
 
 
 /*=====================================================================================================
@@ -300,7 +337,7 @@ function sp_CheckBox(...args) {
 }
 
 sp_CheckBox.prototype = sp_UIFactory.uiProto()
-
+sp_CheckBox.prototype.constructor = sp_UI
 
 sp_CheckBox.prototype.initialize = function (toggled) {
     this._toggled = toggled ? true : false
