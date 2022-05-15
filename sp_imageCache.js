@@ -22,7 +22,7 @@ standardPlayer.sp_ImageCache = standardPlayer.sp_ImageCache || {
     isLoaded: false,
     active: true,
     pixiVersion: Number((PIXI.VERSION.split(''))[0]),
-    loadType: this.pixiVersion > 4 ? 'valid' : 'hasLoaded'
+    loadType: this.pixiVersion == 4 ? 'hasLoaded' : 'valid'
 };
 
 standardPlayer.sp_Core.addBaseUpdate(() => {
@@ -491,6 +491,18 @@ class CacheStub {
         return this._name
     }
 
+    addChild(stub){
+        this.stub.addChild(stub.stub)
+    }
+
+    setInteractive(){
+        let obj = this.stub
+        let bounds = obj.getLocalBounds();
+        obj.interative = true;
+        obj.hitArea = new PIXI.Rectangle(0, 0, bounds.width, bounds.height)
+        obj.on('mousedown', ()=> console.log('hit'))
+    }
+
 }
 
 
@@ -503,8 +515,6 @@ class SpriteStub extends CacheStub {
     delete(){
         standardPlayer.sp_ImageCache.deleteSprite(this)
     }
-
-    
 }
 
 class TilingSpriteStub extends CacheStub {
@@ -513,7 +523,7 @@ class TilingSpriteStub extends CacheStub {
         this._name = "";
     }
 
-    delte(){
+    delete(){
         standardPlayer.sp_ImageCache.deleteSprite(this)
     }
 }
