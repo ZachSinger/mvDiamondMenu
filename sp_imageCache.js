@@ -221,8 +221,8 @@ standardPlayer.sp_ImageCache.createGraphic = function(){
     return stub;
 }
 
-standardPlayer.sp_ImageCache.createText = function(content){
-    let text = new PIXI.Text(content);
+standardPlayer.sp_ImageCache.createText = function(content, style){
+    let text = new PIXI.Text(content, style);
     let id = `text:${this.generateUUID()}`
     let stub = new TextStub(id)
 
@@ -230,6 +230,7 @@ standardPlayer.sp_ImageCache.createText = function(content){
     this.text.push(text)
     return stub;
 }
+
 
 //returns true if it find the same texture as the sprite on the stub provided, but on a different sprite in the cache
 standardPlayer.sp_ImageCache.textureInUse = function(stub){
@@ -563,6 +564,20 @@ class TextStub extends CacheStub {
 
     delete(){
         standardPlayer.sp_ImageCache.deleteText(this)
+    }
+
+    setText(text, measure){
+        this.stub.text = text;
+        if(measure){
+            this.stub.met = PIXI.TextMetrics.measureText(text, this.stub._style)
+        }
+    }
+
+    center(){
+        if(this.stub.met){
+            this.stub.pivot.set(this.stub.met.width / 2, this.stub.met.height / 2)
+            
+        }
     }
 }
 
