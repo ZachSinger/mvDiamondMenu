@@ -51,7 +51,7 @@ sp_UI.prototype.constructor = sp_UI.prototype.build;
 sp_UI.prototype.build = function (args) {
     this.setProps()
     this.makeGettersAndSetters()
-    this.setDimensions()
+    this.setBackDimensions()
     this.createBackground()
     this.createTextContainer()
     this.initialize(...args)
@@ -77,6 +77,42 @@ sp_UI.prototype.makeGettersAndSetters = function(){
             this._stage.stub.y = value;
         }
     })
+
+    Object.defineProperty(this, 'width', {
+        get:()=>{
+            return this._stage.stub.width
+        }, 
+        set: (value)=>{
+            this._stage.stub.width = value;
+        }
+    })
+
+    Object.defineProperty(this, 'height', {
+        get:()=>{
+            return this._stage.stub.height
+        }, 
+        set: (value)=>{
+            this._stage.stub.height = value;
+        }
+    })
+
+    Object.defineProperty(this, 'visible', {
+        get:()=>{
+            return this._stage.stub.visible
+        }, 
+        set: (value)=>{
+            this._stage.stub.visible = value;
+        }
+    })
+
+    Object.defineProperty(this, 'alpha', {
+        get:()=>{
+            return this._stage.stub.alpha
+        }, 
+        set: (value)=>{
+            this._stage.stub.alpha = value;
+        }
+    })
 }
 
 sp_UI.prototype.setProps = function () {
@@ -84,7 +120,7 @@ sp_UI.prototype.setProps = function () {
     this._stage = standardPlayer.sp_ImageCache.createContainer()
 }
 
-sp_UI.prototype.setDimensions = function () {
+sp_UI.prototype.setBackDimensions = function () {
     this._backWidth = this.initialDrawWidth()
     this._backHeight = this.initialDrawHeight()
 }
@@ -155,6 +191,12 @@ sp_UI.prototype.setPosition = function(x, y){
     y = y || x;
     this.x = x;
     this.y = y;
+}
+
+sp_UI.prototype.setDimensions = function(width, height){
+    height = height || width;
+    this.width = width;
+    this.height = height;
 }
 
 sp_UI.prototype.stage = function () {
