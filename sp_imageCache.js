@@ -533,14 +533,6 @@ class CacheStub {
         this.stub.addChild(stub.stub)
     }
 
-    setInteractive(){
-        let obj = this.stub
-        let bounds = obj.getLocalBounds();
-        obj.interative = true;
-        obj.hitArea = new PIXI.Rectangle(0, 0, bounds.width, bounds.height)
-        obj.on('mousedown', ()=> console.log('hit'))
-    }
-
 }
 
 

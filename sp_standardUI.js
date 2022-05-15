@@ -12,6 +12,15 @@ standardPlayer.standardUI = standardPlayer.standardUI || { animations: [], activ
 
 standardPlayer.standardUI.Parameters = PluginManager.parameters('standardPlayer.standardUI');
 
+
+/*===================================================================================================== 
+  ____                 
+ |  _ \                
+ | |_) | __ _ ___  ___ 
+ |  _ < / _` / __|/ _ \
+ | |_) | (_| \__ \  __/
+ |____/ \__,_|___/\___|
+=====================================================================================================*/
 function sp_UIFactory() {
     throw new Error('This is a static class')
 }
@@ -56,7 +65,6 @@ sp_UI.prototype.build = function (args) {
     this.createTextContainer()
     this.initialize(...args)
     this.preload()
-    this.setInteractive()
 }
 
 sp_UI.prototype.makeGettersAndSetters = function(){
@@ -157,18 +165,7 @@ sp_UI.prototype.imageCache = function () {
     return standardPlayer.sp_ImageCache
 }
 
-sp_UI.prototype.isInteractive = function () {
-    return false;
-}
-
-sp_UI.prototype.setInteractive = function () {
-    if (this.isInteractive()) {
-        this._stage.setInteractive()
-        this._back.setInteractive()
-    }
-}
-
-sp_UI.prototype.createBackground = function (useText) {
+sp_UI.prototype.createBackground = function () {
     let back = this.imageCache().createGraphic()
 
     sp_UIFactory.windowBackgroundStyler(back)
@@ -204,7 +201,7 @@ sp_UI.prototype.stage = function () {
 }
 
 sp_UI.prototype.update = function () {
-
+    
 }
 
 sp_UI.prototype.mouseCollision = function () {
@@ -222,12 +219,80 @@ sp_UI.prototype.isPressed = function () {
     return TouchInput.isPressed() && this.mouseCollision()
 }
 
-/**
- * 
- * USE A SHARED FILTER THAT IS AVAIALABLE  TO ALL CHILD CLASSES
- * SET SP_UI TO BE INTERACTIVE IF DESIRED (OR CREATE SEPARATE INTERACTABLE CLASS<<INTERACTIVE AS FAR AS TOUCHINPUT>>)
- * 
- */
+
+/*=====================================================================================================
+   _____            _        _                     
+  / ____|          | |      (_)                    
+ | |     ___  _ __ | |_ __ _ _ _ __   ___ _ __ ___ 
+ | |    / _ \| '_ \| __/ _` | | '_ \ / _ \ '__/ __|
+ | |___| (_) | | | | || (_| | | | | |  __/ |  \__ \
+  \_____\___/|_| |_|\__\__,_|_|_| |_|\___|_|  |___/
+=====================================================================================================*/
+
+function sp_Component(...args){
+    this.build(args)
+}
+
+sp_Component.prototype = sp_UIFactory.uiProto()
+
+sp_Component.prototype.initialize = function(showBackground){
+    showBackground = showBackground || false;
+    this.initializeMembers()
+    this._back.stub.visible = showBackground
+}
+
+sp_Component.prototype.initializeMembers = function(){
+    this.children = [];
+}
+
+sp_Component.prototype.addChild = function(...children){
+    let index = -1;
+    let length = children.length;
+
+    for(let i = 0; i < length; i++){
+        index = this.children.indexOf(children[i])
+        if(index < 0){
+            this.children.push(children[i])
+        }
+        this._stage.addChild(children[i]._stage)
+    }
+}
+
+sp_Component.prototype.removeChild = function(child){
+    let index = this.children.indexOf(child)
+
+    if(index >= 0){
+        this.children.splice(index, 1)
+    }
+
+    this._stage.removeChild(child._stage)
+}
+
+sp_Component.prototype.updateChildren = function(){
+    let list = this.children;
+    let length = list.length;
+
+    for(let i = 0; i < length; i++){
+        list[i].update()
+    }
+}
+
+sp_Component.prototype.update = function(){
+    sp_UI.prototype.update.call(this)
+    this.updateChildren()
+}
+
+
+
+
+/*=====================================================================================================
+  ______ _                           _       
+ |  ____| |                         | |      
+ | |__  | | ___ _ __ ___   ___ _ __ | |_ ___ 
+ |  __| | |/ _ \ '_ ` _ \ / _ \ '_ \| __/ __|
+ | |____| |  __/ | | | | |  __/ | | | |_\__ \
+ |______|_|\___|_| |_| |_|\___|_| |_|\__|___/ 
+ =====================================================================================================*/
 
 
 function sp_CheckBox(...args) {
@@ -267,9 +332,6 @@ sp_CheckBox.prototype.positionText = function(){
     txt.x -= txt.width / 16
 }
 
-sp_CheckBox.prototype.isInteractive = function () {
-    return true;
-}
 
 sp_CheckBox.prototype.draw = function () {
     let content = this._toggled ? 'X' : '';
@@ -289,6 +351,9 @@ sp_CheckBox.prototype.onCollision = function () {
     this._toggled = !this._toggled;
     this.draw()
 }
+
+
+
 
 
 
