@@ -37,8 +37,15 @@ sp_UIFactory.containerProto = function () {
     return Object.create(sp_UIContainer.prototype)
 }
 
+sp_UIFactory.textStyle = function (width) {
+    return new PIXI.TextStyle({
+        wordWrap: true,
+        wordWrapWidth: width || Graphics.width * .15
+    })
+}
+
 sp_UIFactory.fill = function (type) {
-    switch(type){
+    switch (type) {
         case 'element':
             return this.fillElement()
         case 'component':
@@ -49,7 +56,7 @@ sp_UIFactory.fill = function (type) {
 }
 
 sp_UIFactory.lineStyle = function (type) {
-    switch(type){
+    switch (type) {
         case 'element':
             return this.lineStyleElement()
         case 'component':
@@ -71,7 +78,7 @@ sp_UIFactory.lineStyleArea = function () {
     return [2, 0xFFFFFF, 1]
 }
 
-sp_UIFactory.setFill = function(graphicsStub, type){
+sp_UIFactory.setFill = function (graphicsStub, type) {
     let fill = this.fill(type)
     graphicsStub.stub.beginFill(fill)
 }
@@ -88,7 +95,7 @@ sp_UIFactory.fillArea = function () {
     return 0x0
 }
 
-sp_UIFactory.setLineStyle = function(graphicsStub, type){
+sp_UIFactory.setLineStyle = function (graphicsStub, type) {
     let lineStyle = this.lineStyle(type)
     graphicsStub.stub.lineStyle(...lineStyle)
 }
@@ -115,61 +122,61 @@ sp_UI.prototype.build = function (args) {
     this.preload()
 }
 
-sp_UI.prototype.makeGettersAndSetters = function(){
+sp_UI.prototype.makeGettersAndSetters = function () {
     Object.defineProperty(this, 'x', {
-        get:()=>{
+        get: () => {
             return this._stage.stub.x
-        }, 
-        set: (value)=>{
+        },
+        set: (value) => {
             this._stage.stub.x = value;
         }
     })
 
     Object.defineProperty(this, 'y', {
-        get:()=>{
+        get: () => {
             return this._stage.stub.y
-        }, 
-        set: (value)=>{
+        },
+        set: (value) => {
             this._stage.stub.y = value;
         }
     })
 
     Object.defineProperty(this, 'width', {
-        get:()=>{
+        get: () => {
             return this._stage.stub.width
-        }, 
-        set: (value)=>{
+        },
+        set: (value) => {
             this._stage.stub.width = value;
         }
     })
 
     Object.defineProperty(this, 'height', {
-        get:()=>{
+        get: () => {
             return this._stage.stub.height
-        }, 
-        set: (value)=>{
+        },
+        set: (value) => {
             this._stage.stub.height = value;
         }
     })
 
     Object.defineProperty(this, 'visible', {
-        get:()=>{
+        get: () => {
             return this._stage.stub.visible
-        }, 
-        set: (value)=>{
+        },
+        set: (value) => {
             this._stage.stub.visible = value;
         }
     })
 
     Object.defineProperty(this, 'alpha', {
-        get:()=>{
+        get: () => {
             return this._stage.stub.alpha
-        }, 
-        set: (value)=>{
+        },
+        set: (value) => {
             this._stage.stub.alpha = value;
         }
     })
-    
+
 }
 
 sp_UI.prototype.setProps = function () {
@@ -182,12 +189,12 @@ sp_UI.prototype.setBackDimensions = function () {
     this._backHeight = this.initialDrawHeight()
 }
 
-sp_UI.prototype.initialDrawWidth = function(){
-    return Graphics.width * .2
+sp_UI.prototype.initialDrawWidth = function () {
+    return typeof this._drawWidth == 'undefined' ? Graphics.width * .2 : this._drawWidth
 }
 
-sp_UI.prototype.initialDrawHeight = function(){
-    return Graphics.width * .2
+sp_UI.prototype.initialDrawHeight = function () {
+    return typeof this._drawHeight == 'undefined' ? Graphics.width * .2 : this._drawHeight
 }
 
 sp_UI.prototype.preload = function () {
@@ -214,15 +221,15 @@ sp_UI.prototype.imageCache = function () {
     return standardPlayer.sp_ImageCache
 }
 
-sp_UI.prototype.hasBackground = function(){
+sp_UI.prototype.hasBackground = function () {
     return typeof this._hasBackground == 'undefined' ? true : this._hasBackground
 }
 
-sp_UI.prototype.hasBorder = function(){
+sp_UI.prototype.hasBorder = function () {
     return typeof this._hasBorder == 'undefined' ? true : this._hasBorder
 }
 
-sp_UI.prototype.uiType = function(){
+sp_UI.prototype.uiType = function () {
     return typeof this._uiType == 'undefined' ? 'element' : this._uiType
 }
 
@@ -230,54 +237,66 @@ sp_UI.prototype.createBackground = function () {
     let back = this.imageCache().createGraphic()
     let border = this.imageCache().createGraphic()
 
-    if(this.hasBackground()){
+    if (this.hasBackground()) {
         sp_UIFactory.setFill(back, this.uiType())
         back.stub.drawRect(0, 0, this._backWidth, this._backHeight)
     }
 
-    if(this.hasBorder()){
+    if (this.hasBorder()) {
         sp_UIFactory.setLineStyle(border, this.uiType())
         border.stub.drawRect(0, 0, this._backWidth, this._backHeight)
     }
 
-    
+
     this._stage.stub.filters = [sp_UIFactory.primaryElementFilter]
     this._stage.addChild(back)
     this._stage.addChild(border)
     this._back = back;
     this._border = border
-        
+
 }
 
-sp_UI.prototype.createTextContainer = function(){
+sp_UI.prototype.textStyle = function(){
+    return sp_UIFactory.textStyle()
+}
+
+sp_UI.prototype.createTextContainer = function () {
     this._text = this.imageCache().createContainer()
-    this._textObjects = {main: this.imageCache().createText()}
+    this._textObjects = { main: this.imageCache().createText("", this.textStyle()) }
 
     this._text.addChild(this._textObjects.main)
     this._stage.addChild(this._text)
 }
 
-sp_UI.prototype.setPosition = function(x, y){
-    y = typeof y == 'undefined' ?  x : y;
+sp_UI.prototype.redrawBackground = function(){
+    this._back.delete()
+    this._border.delete()
+    this.setBackDimensions()
+    this.createBackground()
+    this._stage.add(this._text)
+}
+
+sp_UI.prototype.setPosition = function (x, y) {
+    y = typeof y == 'undefined' ? x : y;
     this.x = x;
     this.y = y;
 }
 
-sp_UI.prototype.setDimensions = function(width, height){
+sp_UI.prototype.setDimensions = function (width, height) {
     height = height || width;
     this.width = width;
     this.height = height;
 }
 
-sp_UI.prototype.showBorder = function(show){
+sp_UI.prototype.showBorder = function (show) {
     show = show || !this._border.stub.visible
 
     this._border.stub.visible = show;
 }
 
-sp_UI.prototype.showBackground = function(show){
+sp_UI.prototype.showBackground = function (show) {
     show = show || !this._back.stub.visible
-    
+
     this._back.stub.visible = show;
 }
 
@@ -286,7 +305,7 @@ sp_UI.prototype.stage = function () {
 }
 
 sp_UI.prototype.update = function () {
-    
+
 }
 
 sp_UI.prototype.mouseCollision = function () {
@@ -297,13 +316,13 @@ sp_UI.prototype.mouseCollision = function () {
 }
 
 sp_UI.prototype.isTriggered = function () {
-    if(TouchInput.isTriggered()){
+    if (TouchInput.isTriggered()) {
         return this.mouseCollision()
     }
 }
 
 sp_UI.prototype.isPressed = function () {
-    if(TouchInput.isPressed()){
+    if (TouchInput.isPressed()) {
         return this.mouseCollision()
     }
 }
@@ -318,60 +337,60 @@ sp_UI.prototype.isPressed = function () {
   \_____\___/|_| |_|\__\__,_|_|_| |_|\___|_|  |___/
 =====================================================================================================*/
 
-function sp_UIContainer(...args){
+function sp_UIContainer(...args) {
     this.build(args)
 }
 
 sp_UIContainer.prototype = sp_UIFactory.uiProto()
 
-sp_UIContainer.prototype.initialize = function(showBackground){
+sp_UIContainer.prototype.initialize = function (showBackground) {
     showBackground = showBackground || false;
     this.initializeMembers()
     this._back.stub.visible = showBackground
 }
 
-sp_UIContainer.prototype.initializeMembers = function(){
+sp_UIContainer.prototype.initializeMembers = function () {
     this.children = [];
 }
 
-sp_UIContainer.prototype.addChild = function(...children){
+sp_UIContainer.prototype.addChild = function (...children) {
     let index = -1;
     let length = children.length;
-    
-    for(let i = 0; i < length; i++){
-        if(children[i].constructor != this._childType){
+
+    for (let i = 0; i < length; i++) {
+        if (children[i].constructor != this._childType) {
             console.log(`Cannot add objects of type ${children[i].constructor} ${this._childType}`)
             continue
         }
 
         index = this.children.indexOf(children[i])
-        if(index < 0){
+        if (index < 0) {
             this.children.push(children[i])
         }
         this._stage.addChild(children[i]._stage)
     }
 }
 
-sp_UIContainer.prototype.removeChild = function(child){
+sp_UIContainer.prototype.removeChild = function (child) {
     let index = this.children.indexOf(child)
 
-    if(index >= 0){
+    if (index >= 0) {
         this.children.splice(index, 1)
     }
 
     this._stage.removeChild(child._stage)
 }
 
-sp_UIContainer.prototype.updateChildren = function(){
+sp_UIContainer.prototype.updateChildren = function () {
     let list = this.children;
     let length = list.length;
 
-    for(let i = 0; i < length; i++){
+    for (let i = 0; i < length; i++) {
         list[i].update()
     }
 }
 
-sp_UIContainer.prototype.update = function(){
+sp_UIContainer.prototype.update = function () {
     sp_UI.prototype.update.call(this)
     this.updateChildren()
 }
@@ -381,7 +400,7 @@ sp_UIContainer.prototype.update = function(){
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-function sp_Component(...args){
+function sp_Component(...args) {
     this._childType = sp_UI
     this._uiType = 'component'
     this.build(args)
@@ -396,7 +415,7 @@ sp_Component.prototype.constructor = sp_Component
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-function sp_Area(...args){
+function sp_Area(...args) {
     this._childType = sp_Component
     this._areaType = 'component'
     this.build(args)
@@ -430,19 +449,19 @@ sp_CheckBox.prototype.initialize = function (toggled) {
     this.draw()
 }
 
-sp_CheckBox.prototype.initialDrawWidth = function(){
+sp_CheckBox.prototype.initialDrawWidth = function () {
     return Graphics.width * .04
 }
 
-sp_CheckBox.prototype.initialDrawHeight = function(){
+sp_CheckBox.prototype.initialDrawHeight = function () {
     return Graphics.width * .04
 }
 
-sp_CheckBox.prototype.positionText = function(){
+sp_CheckBox.prototype.positionText = function () {
     let txt = this._textObjects.main.stub;
     let back = this._back.stub
-    
-    txt.position.set(back.width / 2, back.height / 2 )
+
+    txt.position.set(back.width / 2, back.height / 2)
     txt.y -= txt.height / 2
     txt.y -= txt.height / 16
 
@@ -476,19 +495,19 @@ sp_CheckBox.prototype.onCollision = function () {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-function sp_Button(...args){
+function sp_Button(...args) {
     this.build(args)
 }
 
 sp_Button.prototype = sp_UIFactory.uiProto()
 sp_Button.prototype.constructor = sp_UI
 
-sp_Button.prototype.initialize = function(text, onClick){
+sp_Button.prototype.initialize = function (text, onClick) {
     this._textObjects.main.setText(text || "", true)
     this.positionText()
     console.log(this)
 
-    if(onClick){
+    if (onClick) {
         this.onClick = onClick.bind(this);
     }
 }
@@ -500,11 +519,11 @@ sp_Button.prototype.update = function () {
     }
 }
 
-sp_Button.prototype.positionText = function(){
+sp_Button.prototype.positionText = function () {
     let txt = this._textObjects.main.stub;
     let back = this._back.stub
-    
-    txt.position.set(back.width / 2, back.height / 2 )
+
+    txt.position.set(back.width / 2, back.height / 2)
     txt.y -= txt.height / 2
     txt.y -= txt.height / 16
 
@@ -512,15 +531,15 @@ sp_Button.prototype.positionText = function(){
     txt.x -= txt.width / 16
 }
 
-sp_Button.prototype.initialDrawWidth = function(){
+sp_Button.prototype.initialDrawWidth = function () {
     return Graphics.width * .08
 }
 
-sp_Button.prototype.initialDrawHeight = function(){
+sp_Button.prototype.initialDrawHeight = function () {
     return Graphics.width * .04
 }
 
-sp_Button.prototype.onClick = function(){
+sp_Button.prototype.onClick = function () {
     console.log('clicked button')
 }
 
@@ -529,17 +548,19 @@ sp_Button.prototype.onCollision = function () {
 }
 
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
-function sp_ToggleButton(...args){
+function sp_ToggleButton(...args) {
     this.build(args)
 }
 
 sp_ToggleButton.prototype = Object.create(sp_Button.prototype)
 sp_ToggleButton.prototype.constructor = sp_UI;
 
-sp_ToggleButton.prototype.initialize = function(text, toggleOnCb, toggleOffCb){
+sp_ToggleButton.prototype.initialize = function (text, toggleOnCb, toggleOffCb) {
     let filter = new PIXI.filters.ColorMatrixFilter
 
     sp_Button.prototype.initialize.call(this, text, toggleOnCb)
@@ -550,26 +571,89 @@ sp_ToggleButton.prototype.initialize = function(text, toggleOnCb, toggleOffCb){
     this._buttonFilter = filter
 }
 
-sp_ToggleButton.prototype.onToggleOn = function(){
+sp_ToggleButton.prototype.onToggleOn = function () {
     return this.onClick()
 }
 
-sp_ToggleButton.prototype.onToggleOff = function(){
+sp_ToggleButton.prototype.onToggleOff = function () {
     console.log('toggled off')
 }
 
-sp_ToggleButton.prototype.onCollision = function(){
+sp_ToggleButton.prototype.onCollision = function () {
     this._toggled = !this._toggled;
 
     console.log()
-    if(this._toggled){
+    if (this._toggled) {
         this.onToggleOn()
         this._buttonFilter.brightness(.85)
         this._border.stub.lineStyle.fill = 'white'
     } else {
         this.onToggleOff()
-        this._buttonFilter.brightness(1 )
+        this._buttonFilter.brightness(1)
         this._border.stub.lineStyle.fill = 'black'
     }
-    
+
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+function sp_TextWindow(...args) {
+    this.build(args)
+}
+
+sp_TextWindow.prototype = sp_UIFactory.uiProto()
+sp_TextWindow.prototype.constructor = sp_UI
+
+sp_TextWindow.prototype.initialize = function (text) {
+    this._textObjects.main.setText(text, true)
+    this.resetDimensions()
+    this.positionText()
+}
+
+sp_TextWindow.prototype.positionText = function () {
+    let txt = this._textObjects.main.stub;
+    let back = this._back.stub
+
+    console.log(back)
+    console.log(txt)
+    txt.position.set(back.width / 2, back.height / 2)
+    txt.y -= txt.height / 2
+    txt.y -= txt.height / 32
+    txt.y += this.padding() / 2
+
+    txt.x -= txt.width / 2
+    txt.x -= txt.width / 32
+    txt.x += this.padding()
+}
+
+sp_TextWindow.prototype.padding = function(){
+    return this._back.stub.width * .03
+}
+
+sp_TextWindow.prototype.resetDimensions = function(){
+    let met = this._textObjects.main.stub.met
+    let tWidth = met.width;
+    let tHeight = met.height;
+
+    this._drawWidth =  tWidth + this.padding() * 2
+    this._drawHeight = tHeight + this.padding() * 2
+    this.redrawBackground()
+    this.positionText()
+}
+
+sp_TextWindow.prototype.textStyle = function(){
+    return new PIXI.TextStyle({
+        wordWrap:true,
+        wordWrapWidth: this._back.stub.width - this.padding() * 2,
+        fontSize:14
+    })
+}
+
+sp_TextWindow.prototype.setText = function(text){
+    this._textObjects.main.setText(text, true)
+    this.resetDimensions()
 }
