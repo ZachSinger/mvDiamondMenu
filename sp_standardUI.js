@@ -189,7 +189,7 @@ sp_UI.prototype.createTextContainer = function(){
 }
 
 sp_UI.prototype.setPosition = function(x, y){
-    y = y || x;
+    y = typeof y == 'undefined' ?  x : y;
     this.x = x;
     this.y = y;
 }
@@ -386,8 +386,54 @@ sp_CheckBox.prototype.onCollision = function () {
 }
 
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+function sp_Button(...args){
+    this.build(args)
+}
 
+sp_Button.prototype = sp_UIFactory.uiProto()
+sp_Button.prototype.constructor = sp_UI
 
+sp_Button.prototype.initialize = function(text){
+    this._textObjects.main.setText(text || "", true)
+    this.positionText()
+}
 
+sp_Button.prototype.update = function () {
+    sp_UI.prototype.update.call(this)
+    if (this.isTriggered()) {
+        this.onCollision()
+    }
+}
+
+sp_Button.prototype.positionText = function(){
+    let txt = this._textObjects.main.stub;
+    let back = this._back.stub
+    
+    txt.position.set(back.width / 2, back.height / 2 )
+    txt.y -= txt.height / 2
+    txt.y -= txt.height / 16
+
+    txt.x -= txt.width / 2
+    txt.x -= txt.width / 16
+}
+
+sp_Button.prototype.initialDrawWidth = function(){
+    return Graphics.width * .08
+}
+
+sp_Button.prototype.initialDrawHeight = function(){
+    return Graphics.width * .04
+}
+
+sp_Button.prototype.onClick = function(){
+    console.log('clicked button')
+}
+
+sp_Button.prototype.onCollision = function () {
+    this.onClick()
+}
