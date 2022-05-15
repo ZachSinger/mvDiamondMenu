@@ -25,6 +25,10 @@ function sp_UIFactory() {
     throw new Error('This is a static class')
 }
 
+sp_UIFactory.primaryAreaFilter = new PIXI.filters.ColorMatrixFilter;
+sp_UIFactory.primaryComponentFilter = new PIXI.filters.ColorMatrixFilter;
+sp_UIFactory.primaryElementFilter = new PIXI.filters.ColorMatrixFilter;
+
 sp_UIFactory.uiProto = function () {
     return Object.create(sp_UI.prototype)
 }
@@ -33,21 +37,59 @@ sp_UIFactory.containerProto = function () {
     return Object.create(sp_UIContainer.prototype)
 }
 
-sp_UIFactory.lineStyle = function () {
+sp_UIFactory.fill = function (type) {
+    switch(type){
+        case 'element':
+            return this.fillElement()
+        case 'component':
+            return this.fillComponent()
+        case 'area':
+            return this.fillArea()
+    }
+}
+
+sp_UIFactory.lineStyle = function (type) {
+    switch(type){
+        case 'element':
+            return this.lineStyleElement()
+        case 'component':
+            return this.lineStyleComponent()
+        case 'area':
+            return this.lineStyleArea()
+    }
+}
+
+sp_UIFactory.lineStyleElement = function () {
     return [2, 0xFFFFFF, 1]
 }
 
-sp_UIFactory.fill = function () {
-    return 0x54aeba
+sp_UIFactory.lineStyleComponent = function () {
+    return [2, 0xFFFFFF, 1]
 }
 
-sp_UIFactory.setFill = function(graphicsStub){
-    let fill = this.fill()
+sp_UIFactory.lineStyleArea = function () {
+    return [2, 0xFFFFFF, 1]
+}
+
+sp_UIFactory.setFill = function(graphicsStub, type){
+    let fill = this.fill(type)
     graphicsStub.stub.beginFill(fill)
 }
 
-sp_UIFactory.setLineStyle = function(graphicsStub){
-    let lineStyle = this.lineStyle()
+sp_UIFactory.fillElement = function () {
+    return 0x408891
+}
+
+sp_UIFactory.fillComponent = function () {
+    return 0x376369
+}
+
+sp_UIFactory.fillArea = function () {
+    return 0x0
+}
+
+sp_UIFactory.setLineStyle = function(graphicsStub, type){
+    let lineStyle = this.lineStyle(type)
     graphicsStub.stub.lineStyle(...lineStyle)
 }
 
@@ -180,22 +222,26 @@ sp_UI.prototype.hasBorder = function(){
     return typeof this._hasBorder == 'undefined' ? true : this._hasBorder
 }
 
+sp_UI.prototype.uiType = function(){
+    return typeof this._uiType == 'undefined' ? 'element' : this._uiType
+}
+
 sp_UI.prototype.createBackground = function () {
     let back = this.imageCache().createGraphic()
     let border = this.imageCache().createGraphic()
 
     if(this.hasBackground()){
-        sp_UIFactory.setFill(back)
+        sp_UIFactory.setFill(back, this.uiType())
         back.stub.drawRect(0, 0, this._backWidth, this._backHeight)
     }
 
     if(this.hasBorder()){
-        sp_UIFactory.setLineStyle(border)
+        sp_UIFactory.setLineStyle(border, this.uiType())
         border.stub.drawRect(0, 0, this._backWidth, this._backHeight)
     }
 
     
-
+    this._stage.stub.filters = [sp_UIFactory.primaryElementFilter]
     this._stage.addChild(back)
     this._stage.addChild(border)
     this._back = back;
@@ -337,7 +383,9 @@ sp_UIContainer.prototype.update = function(){
 
 function sp_Component(...args){
     this._childType = sp_UI
+    this._uiType = 'component'
     this.build(args)
+    this._stage.stub.filters = [sp_UIFactory.primaryComponentFilter]
 }
 
 sp_Component.prototype = sp_UIFactory.containerProto()
@@ -350,7 +398,9 @@ sp_Component.prototype.constructor = sp_Component
 
 function sp_Area(...args){
     this._childType = sp_Component
+    this._areaType = 'component'
     this.build(args)
+    this._stage.stub.filters = [sp_UIFactory.primaryAreaFilter]
 }
 
 sp_Area.prototype = sp_UIFactory.containerProto()
@@ -433,9 +483,14 @@ function sp_Button(...args){
 sp_Button.prototype = sp_UIFactory.uiProto()
 sp_Button.prototype.constructor = sp_UI
 
-sp_Button.prototype.initialize = function(text){
+sp_Button.prototype.initialize = function(text, onClick){
     this._textObjects.main.setText(text || "", true)
     this.positionText()
+    console.log(this)
+
+    if(onClick){
+        this.onClick = onClick.bind(this);
+    }
 }
 
 sp_Button.prototype.update = function () {
@@ -471,4 +526,50 @@ sp_Button.prototype.onClick = function(){
 
 sp_Button.prototype.onCollision = function () {
     this.onClick()
+}
+
+
+
+
+
+function sp_ToggleButton(...args){
+    this.build(args)
+}
+
+sp_ToggleButton.prototype = Object.create(sp_Button.prototype)
+sp_ToggleButton.prototype.constructor = sp_UI;
+
+sp_ToggleButton.prototype.initialize = function(text, toggleOnCb, toggleOffCb){
+    let filter = new PIXI.filters.ColorMatrixFilter
+
+    sp_Button.prototype.initialize.call(this, text, toggleOnCb)
+
+    this.onToggleOff = toggleOffCb.bind(this)
+    this._stage.stub.filters = [filter]
+    this._toggled = false;
+    this._buttonFilter = filter
+}
+
+sp_ToggleButton.prototype.onToggleOn = function(){
+    return this.onClick()
+}
+
+sp_ToggleButton.prototype.onToggleOff = function(){
+    console.log('toggled off')
+}
+
+sp_ToggleButton.prototype.onCollision = function(){
+    this._toggled = !this._toggled;
+
+    console.log()
+    if(this._toggled){
+        this.onToggleOn()
+        this._buttonFilter.brightness(.85)
+        this._border.stub.lineStyle.fill = 'white'
+    } else {
+        this.onToggleOff()
+        this._buttonFilter.brightness(1 )
+        this._border.stub.lineStyle.fill = 'black'
+    }
+    
 }
