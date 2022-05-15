@@ -50,12 +50,33 @@ sp_UI.prototype.constructor = sp_UI.prototype.build;
 
 sp_UI.prototype.build = function (args) {
     this.setProps()
+    this.makeGettersAndSetters()
     this.setDimensions()
     this.createBackground()
     this.createTextContainer()
     this.initialize(...args)
     this.preload()
     this.setInteractive()
+}
+
+sp_UI.prototype.makeGettersAndSetters = function(){
+    Object.defineProperty(this, 'x', {
+        get:()=>{
+            return this._stage.stub.x
+        }, 
+        set: (value)=>{
+            this._stage.stub.x = value;
+        }
+    })
+
+    Object.defineProperty(this, 'y', {
+        get:()=>{
+            return this._stage.stub.y
+        }, 
+        set: (value)=>{
+            this._stage.stub.y = value;
+        }
+    })
 }
 
 sp_UI.prototype.setProps = function () {
@@ -115,7 +136,7 @@ sp_UI.prototype.createBackground = function (useText) {
     let back = this.imageCache().createGraphic()
 
     sp_UIFactory.windowBackgroundStyler(back)
-    back.stub.drawRoundedRect(0, 0, this._backWidth, this._backHeight, 12)
+    back.stub.drawRect(0, 0, this._backWidth, this._backHeight)
 
     this._stage.addChild(back)
     this._back = back;
@@ -128,6 +149,12 @@ sp_UI.prototype.createTextContainer = function(){
 
     this._text.addChild(this._textObjects.main)
     this._stage.addChild(this._text)
+}
+
+sp_UI.prototype.setPosition = function(x, y){
+    y = y || x;
+    this.x = x;
+    this.y = y;
 }
 
 sp_UI.prototype.stage = function () {
