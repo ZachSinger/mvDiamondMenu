@@ -353,10 +353,6 @@ sp_CheckBox.prototype.initialDrawHeight = function(){
     return Graphics.width * .04
 }
 
-sp_CheckBox.prototype.onPreloaded = function () {
-    console.log('finished preloading')
-}
-
 sp_CheckBox.prototype.positionText = function(){
     let txt = this._textObjects.main.stub;
     let back = this._back.stub
