@@ -13,6 +13,7 @@ standardPlayer.sp_Core = standardPlayer.sp_Core || {};
 standardPlayer.sp_Core.Parameters = PluginManager.parameters('standardPlayer.sp_Core');
 
 
+
 // /* ===================================================================================================
 //         Update Handlers
 //  ===================================================================================================*/
@@ -241,13 +242,11 @@ standardPlayer.sp_Core.toggleAction = function (action, enable) {
 
 standardPlayer.sp_Core.toggleInput = function (enable) {
     let vals = ["ok", "cancel", "shift", "control", "pageup", "pagedown", "up", "down", "right", "left", "tab", "escape"];
-
     this.toggleKeys(vals, enable);
 }
 
 standardPlayer.sp_Core.toggleMovementKeys = function (enable) {
     let vals = ["up", "down", "left", "right"];
-
     this.toggleKeys(vals, enable);
 }
 
