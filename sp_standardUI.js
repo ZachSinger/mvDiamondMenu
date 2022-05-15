@@ -41,14 +41,16 @@ sp_UIFactory.fill = function () {
     return 0x54aeba
 }
 
-sp_UIFactory.windowBackgroundStyler = function (graphicsStub) {
-    let lineStyle = this.lineStyle()
+sp_UIFactory.setFill = function(graphicsStub){
     let fill = this.fill()
-
-    console.log(graphicsStub)
-    graphicsStub.stub.lineStyle(...lineStyle)
     graphicsStub.stub.beginFill(fill)
 }
+
+sp_UIFactory.setLineStyle = function(graphicsStub){
+    let lineStyle = this.lineStyle()
+    graphicsStub.stub.lineStyle(...lineStyle)
+}
+
 
 
 function sp_UI() {
@@ -125,6 +127,7 @@ sp_UI.prototype.makeGettersAndSetters = function(){
             this._stage.stub.alpha = value;
         }
     })
+    
 }
 
 sp_UI.prototype.setProps = function () {
@@ -169,14 +172,34 @@ sp_UI.prototype.imageCache = function () {
     return standardPlayer.sp_ImageCache
 }
 
+sp_UI.prototype.hasBackground = function(){
+    return typeof this._hasBackground == 'undefined' ? true : this._hasBackground
+}
+
+sp_UI.prototype.hasBorder = function(){
+    return typeof this._hasBorder == 'undefined' ? true : this._hasBorder
+}
+
 sp_UI.prototype.createBackground = function () {
     let back = this.imageCache().createGraphic()
+    let border = this.imageCache().createGraphic()
 
-    sp_UIFactory.windowBackgroundStyler(back)
-    back.stub.drawRect(0, 0, this._backWidth, this._backHeight)
+    if(this.hasBackground()){
+        sp_UIFactory.setFill(back)
+        back.stub.drawRect(0, 0, this._backWidth, this._backHeight)
+    }
+
+    if(this.hasBorder()){
+        sp_UIFactory.setLineStyle(border)
+        border.stub.drawRect(0, 0, this._backWidth, this._backHeight)
+    }
+
+    
 
     this._stage.addChild(back)
+    this._stage.addChild(border)
     this._back = back;
+    this._border = border
         
 }
 
@@ -198,6 +221,18 @@ sp_UI.prototype.setDimensions = function(width, height){
     height = height || width;
     this.width = width;
     this.height = height;
+}
+
+sp_UI.prototype.showBorder = function(show){
+    show = show || !this._border.stub.visible
+
+    this._border.stub.visible = show;
+}
+
+sp_UI.prototype.showBackground = function(show){
+    show = show || !this._back.stub.visible
+    
+    this._back.stub.visible = show;
 }
 
 sp_UI.prototype.stage = function () {
