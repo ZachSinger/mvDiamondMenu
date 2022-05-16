@@ -256,7 +256,7 @@ sp_UI.prototype.createBackground = function () {
 
 }
 
-sp_UI.prototype.textStyle = function(){
+sp_UI.prototype.textStyle = function () {
     return sp_UIFactory.textStyle()
 }
 
@@ -268,7 +268,7 @@ sp_UI.prototype.createTextContainer = function () {
     this._stage.addChild(this._text)
 }
 
-sp_UI.prototype.redrawBackground = function(){
+sp_UI.prototype.redrawBackground = function () {
     this._back.delete()
     this._border.delete()
     this.setBackDimensions()
@@ -630,30 +630,37 @@ sp_TextWindow.prototype.positionText = function () {
     txt.x += this.padding()
 }
 
-sp_TextWindow.prototype.padding = function(){
+sp_TextWindow.prototype.padding = function () {
     return this._back.stub.width * .03
 }
 
-sp_TextWindow.prototype.resetDimensions = function(){
+sp_TextWindow.prototype.resetDimensions = function () {
     let met = this._textObjects.main.stub.met
     let tWidth = met.width;
     let tHeight = met.height;
 
-    this._drawWidth =  tWidth + this.padding() * 2
+    this._drawWidth = tWidth + this.padding() * 2
     this._drawHeight = tHeight + this.padding() * 2
     this.redrawBackground()
     this.positionText()
 }
 
-sp_TextWindow.prototype.textStyle = function(){
+sp_TextWindow.prototype.textStyle = function () {
     return new PIXI.TextStyle({
-        wordWrap:true,
+        wordWrap: true,
         wordWrapWidth: this._back.stub.width - this.padding() * 2,
-        fontSize:14
+        fontSize: 14
     })
 }
 
-sp_TextWindow.prototype.setText = function(text){
+sp_TextWindow.prototype.setText = function (text, reset) {
     this._textObjects.main.setText(text, true)
-    this.resetDimensions()
+    if (reset) {
+        this.resetDimensions()
+    }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
